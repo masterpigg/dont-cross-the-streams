@@ -19,15 +19,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.CompassCalibration
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.MyLocation
@@ -42,6 +39,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,10 +69,15 @@ import com.example.dont_cross_the_streams.domain.model.CollisionSeverity
 import com.example.dont_cross_the_streams.domain.model.GeoLocation
 import com.example.dont_cross_the_streams.domain.model.PopulationDensityZone
 import com.example.dont_cross_the_streams.domain.model.WildlifeOccurrence
+import kotlin.js.ExperimentalJsExport
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sqrt
+
+@OptIn(ExperimentalJsExport::class)
+@JsFun("(lat, lon, zoom) => { if (window.syncWebMap) window.syncWebMap(lat, lon, zoom); }")
+private external fun syncWebMapJs(lat: Double, lon: Double, zoom: Double)
 
 @Composable
 actual fun InteractiveConflictMap(
@@ -97,6 +100,11 @@ actual fun InteractiveConflictMap(
     onSelectPreset: (ConflictRegionPreset) -> Unit,
     onMapCenterAndZoomChanged: (GeoLocation, Float) -> Unit
 ) {
+    // Synchronize Leaflet Web Map background with current map center & zoom
+    LaunchedEffect(mapCenter.latitude, mapCenter.longitude, zoomLevel) {
+        syncWebMapJs(mapCenter.latitude, mapCenter.longitude, zoomLevel.toDouble())
+    }
+
     val textMeasurer = rememberTextMeasurer()
 
     // Pulse animation for hotspot pins
@@ -194,43 +202,117 @@ actual fun InteractiveConflictMap(
         ) {
             canvasSize = size
 
-            // 1. Render Map Basemap background grid & tiles styling
-            drawRect(color = Color(0xFF131722)) // Dark GIS map background
+            // 1. Semi-transparent dark GIS overlay background tint (allows underlying Leaflet tiles to show cleanly)
+            drawRect(color = Color(0xB8121722))
 
-            // Grid lines (Latitude / Longitude)
-            val gridStep = 40f * (2.0f.pow((zoomLevel - 8f).coerceIn(-2f, 4f)))
-            var xGrid = (size.width / 2f + panOffsetX) % gridStep
+            // 2. Latitude & Longitude Grid Lines & Tick Labels
+            val gridStepPixels = 60f * (2.0f.pow((zoomLevel - 8f).coerceIn(-2f, 4f)))
+            var xGrid = (size.width / 2f + panOffsetX) % gridStepPixels
+            if (xGrid < 0) xGrid += gridStepPixels
+
             while (xGrid < size.width) {
                 drawLine(
-                    color = Color(0xFF1E2538),
+                    color = Color(0x333A4B6E),
                     start = Offset(xGrid, 0f),
                     end = Offset(xGrid, size.height),
-                    strokeWidth = 1f
+                    strokeWidth = 1f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
                 )
-                xGrid += gridStep
+                xGrid += gridStepPixels
             }
 
-            var yGrid = (size.height / 2f + panOffsetY) % gridStep
+            var yGrid = (size.height / 2f + panOffsetY) % gridStepPixels
+            if (yGrid < 0) yGrid += gridStepPixels
+
             while (yGrid < size.height) {
                 drawLine(
-                    color = Color(0xFF1E2538),
+                    color = Color(0x333A4B6E),
                     start = Offset(0f, yGrid),
                     end = Offset(size.width, yGrid),
-                    strokeWidth = 1f
+                    strokeWidth = 1f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
                 )
-                yGrid += gridStep
+                yGrid += gridStepPixels
             }
 
-            // Tile grid outlines & labels (Simulating Esri / OSM tiles)
-            val centerPixel = Offset(size.width / 2f + panOffsetX, size.height / 2f + panOffsetY)
-            drawCircle(
-                color = Color(0xFF263238),
-                radius = 350f * (zoomLevel / 10f),
-                center = centerPixel,
-                style = Stroke(width = 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)))
+            // 3. Topological Vector Rivers (Missouri & Mississippi River Networks)
+            val missouriRiverGeo = listOf(
+                GeoLocation(39.10, -94.60), // Kansas City
+                GeoLocation(38.95, -92.33), // Columbia
+                GeoLocation(38.57, -92.17), // Jefferson City
+                GeoLocation(38.80, -90.70), // St. Charles
+                GeoLocation(38.81, -90.12)  // St. Louis Confluence
+            )
+            val missouriPath = Path()
+            var isFirstPt = true
+            for (geoPt in missouriRiverGeo) {
+                val pt = geoToPixel(geoPt, mapCenter, zoomLevel, panOffsetX, panOffsetY, size)
+                if (isFirstPt) {
+                    missouriPath.moveTo(pt.x, pt.y)
+                    isFirstPt = false
+                } else {
+                    missouriPath.lineTo(pt.x, pt.y)
+                }
+            }
+            drawPath(
+                path = missouriPath,
+                color = Color(0x9929B6F6),
+                style = Stroke(width = 4f, cap = StrokeCap.Round, join = StrokeJoin.Round)
             )
 
-            // 2. Render Population Density Zones (Translucent heatmaps)
+            val mississippiRiverGeo = listOf(
+                GeoLocation(41.50, -90.50), // Quad Cities
+                GeoLocation(39.70, -91.35), // Hannibal
+                GeoLocation(38.81, -90.12), // St. Louis Confluence
+                GeoLocation(37.70, -89.80), // Ste. Genevieve
+                GeoLocation(37.50, -89.40), // LaRue Swamp / Cape Girardeau
+                GeoLocation(36.00, -89.60)  // Bootheel / Memphis
+            )
+            val mississippiPath = Path()
+            isFirstPt = true
+            for (geoPt in mississippiRiverGeo) {
+                val pt = geoToPixel(geoPt, mapCenter, zoomLevel, panOffsetX, panOffsetY, size)
+                if (isFirstPt) {
+                    mississippiPath.moveTo(pt.x, pt.y)
+                    isFirstPt = false
+                } else {
+                    mississippiPath.lineTo(pt.x, pt.y)
+                }
+            }
+            drawPath(
+                path = mississippiPath,
+                color = Color(0xB30288D1),
+                style = Stroke(width = 6f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
+
+            // 4. Topological Ozark Highlands Contour Curves
+            val ozarkCenterGeo = GeoLocation(37.80, -92.50)
+            val ozarkPixel = geoToPixel(ozarkCenterGeo, mapCenter, zoomLevel, panOffsetX, panOffsetY, size)
+            val contourRadius = 220f * (2.0f.pow((zoomLevel - 8f).coerceIn(-1f, 3f)))
+            drawCircle(
+                color = Color(0x3381C784),
+                radius = contourRadius,
+                center = ozarkPixel,
+                style = Stroke(width = 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f)))
+            )
+            drawCircle(
+                color = Color(0x2281C784),
+                radius = contourRadius * 0.65f,
+                center = ozarkPixel,
+                style = Stroke(width = 1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f)))
+            )
+
+            // Geographic Regional Label
+            val ozarkLabel = textMeasurer.measure(
+                text = "OZARK PLATEAU HIGHLANDS",
+                style = TextStyle(color = Color(0x77A5D6A7), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            )
+            drawText(
+                textLayoutResult = ozarkLabel,
+                topLeft = Offset(ozarkPixel.x - ozarkLabel.size.width / 2f, ozarkPixel.y - 12f)
+            )
+
+            // 5. Render Population Density Zones (Translucent glowing heatmaps)
             for (zone in populationZones) {
                 val center = geoToPixel(zone.centerLocation, mapCenter, zoomLevel, panOffsetX, panOffsetY, size)
                 val radius = (zone.densityScore.toFloat() / 20f).coerceIn(40f, 180f) * (zoomLevel / 10f)
@@ -264,7 +346,7 @@ actual fun InteractiveConflictMap(
                 )
             }
 
-            // 3. Render Barrier Features (Highways, Railways, Dams, Fences, Canals)
+            // 6. Render Barrier Features (Highways, Railways, Dams, Fences, Canals)
             for (barrier in barriers) {
                 val path = Path()
                 val barrierColor = getBarrierColor(barrier.type)
@@ -322,7 +404,7 @@ actual fun InteractiveConflictMap(
                 )
             }
 
-            // 4. Render Wildlife Occurrences (Species pins)
+            // 7. Render Wildlife Occurrences (Species pins)
             for (wildlife in wildlifeOccurrences) {
                 val pos = geoToPixel(wildlife.location, mapCenter, zoomLevel, panOffsetX, panOffsetY, size)
                 val taxonColor = getTaxonColor(wildlife.taxonGroup)
@@ -357,7 +439,7 @@ actual fun InteractiveConflictMap(
                 }
             }
 
-            // 5. Render Collision Hotspots (Hazard pins with pulsing rings)
+            // 8. Render Collision Hotspots (Hazard pins with pulsing rings)
             for (hotspot in collisionHotspots) {
                 val pos = geoToPixel(hotspot.location, mapCenter, zoomLevel, panOffsetX, panOffsetY, size)
                 val severityColor = getSeverityColor(hotspot.severity)
@@ -393,7 +475,7 @@ actual fun InteractiveConflictMap(
                 )
             }
 
-            // 6. Selected feature highlight ring
+            // 9. Selected feature highlight ring
             selectedFeature?.let { selection ->
                 val selectedLoc = when (selection) {
                     is MapFeatureSelection.Wildlife -> selection.occurrence.location
@@ -410,9 +492,9 @@ actual fun InteractiveConflictMap(
                 )
             }
 
-            // Scale & Map Attribution
+            // Scale & Map Attribution Text
             val attrText = textMeasurer.measure(
-                text = "© Esri World Street Map | OpenStreetMap | NASA Footprint | Web/Wasm GIS Engine",
+                text = "© CARTO Voyager | OpenStreetMap | Esri World Street Map | Kotlin/Wasm GIS Engine",
                 style = TextStyle(color = Color(0xAAFFFFFF), fontSize = 10.sp)
             )
             drawText(
@@ -455,7 +537,7 @@ actual fun InteractiveConflictMap(
             }
         }
 
-        // Overlay: Map Control Buttons (Pan, Zoom, Compass, Reset)
+        // Overlay: Map Control Buttons (Pan, Zoom, Recenter)
         Card(
             modifier = Modifier
                 .align(Alignment.CenterEnd)

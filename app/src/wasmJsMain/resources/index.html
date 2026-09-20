@@ -5,11 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Don't Cross the Streams - Conflict Map</title>
 
-    <!-- Leaflet & MapLibre Web Map Bindings -->
+    <!-- Leaflet Web Map Styles & Script (HTTPS / Relative) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 
     <style>
         html, body {
@@ -21,15 +19,82 @@
             background-color: #121318;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
         }
-        #ComposeTarget {
+        #map-container {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
+            z-index: 0;
+            background-color: #121722;
+        }
+        #ComposeTarget {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
             display: block;
         }
     </style>
 </head>
 <body>
+    <div id="map-container"></div>
     <canvas id="ComposeTarget"></canvas>
+
+    <script>
+        window.leafletMap = null;
+        window.activeTileLayer = null;
+
+        window.syncWebMap = function(lat, lon, zoom) {
+            try {
+                if (typeof L === 'undefined') return;
+                var container = document.getElementById('map-container');
+                if (!container) return;
+
+                if (!window.leafletMap) {
+                    window.leafletMap = L.map('map-container', {
+                        zoomControl: false,
+                        attributionControl: false,
+                        dragging: false,
+                        touchZoom: false,
+                        doubleClickZoom: false,
+                        scrollWheelZoom: false,
+                        boxZoom: false,
+                        keyboard: false
+                    }).setView([lat, lon], Math.round(zoom));
+
+                    // Primary Tile Source: CartoDB Voyager (HTTPS + CORS anonymous)
+                    window.activeTileLayer = L.tileLayer('https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', {
+                        maxZoom: 19,
+                        crossOrigin: 'anonymous',
+                        subdomains: 'abc',
+                        attribution: '&copy; OpenStreetMap &copy; CARTO'
+                    }).addTo(window.leafletMap);
+
+                    // Fallback Tile Source: Esri World Street Map (HTTPS + CORS)
+                    var esriLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                        maxZoom: 19,
+                        crossOrigin: 'anonymous',
+                        attribution: 'Tiles &copy; Esri'
+                    });
+
+                    window.activeTileLayer.on('tileerror', function() {
+                        if (window.leafletMap && !window.switchedToEsri) {
+                            window.switchedToEsri = true;
+                            window.leafletMap.removeLayer(window.activeTileLayer);
+                            esriLayer.addTo(window.leafletMap);
+                        }
+                    });
+                } else {
+                    window.leafletMap.setView([lat, lon], Math.round(zoom), { animate: false });
+                }
+            } catch (err) {
+                console.warn('Leaflet map synchronization notice:', err);
+            }
+        };
+    </script>
     <script type="application/javascript" src="app.js"></script>
 </body>
 </html>
