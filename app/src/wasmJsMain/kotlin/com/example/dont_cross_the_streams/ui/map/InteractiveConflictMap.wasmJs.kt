@@ -80,12 +80,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import org.jetbrains.skia.Image as SkiaImage
 import kotlin.js.ExperimentalJsExport
+import androidx.compose.ui.input.pointer.PointerEventType
 import kotlin.math.PI
+import kotlin.math.atan
 import kotlin.math.cos
 import kotlin.math.ln
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.math.sinh
 import kotlin.math.sqrt
 
 @OptIn(ExperimentalJsExport::class)
@@ -211,6 +214,32 @@ private fun geoToPixel(
     return Offset(x, y)
 }
 
+private fun pixelToGeo(
+    pixel: Offset,
+    centerGeo: GeoLocation,
+    zoomLevel: Float,
+    canvasSize: Size
+): GeoLocation {
+    val z = zoomLevel.roundToInt().coerceIn(2, 18)
+    val scale = 2.0.pow((zoomLevel - z).toDouble()).toFloat()
+
+    val centerWx = lonToWorldX(centerGeo.longitude, z)
+    val centerWy = latToWorldY(centerGeo.latitude, z)
+
+    val targetWx = centerWx + (pixel.x - canvasSize.width / 2f) / scale
+    val targetWy = centerWy + (pixel.y - canvasSize.height / 2f) / scale
+
+    val numTiles = 1 shl z
+    val lon = (targetWx / (numTiles * 256.0)) * 360.0 - 180.0
+
+    val yNorm = targetWy / (numTiles * 256.0)
+    val u2 = (0.5 - yNorm) * 2.0 * PI
+    val latRad = atan(sinh(u2))
+    val lat = latRad * 180.0 / PI
+
+    return GeoLocation(lat.coerceIn(-85.05112878, 85.05112878), lon.coerceIn(-180.0, 180.0))
+}
+
 @Composable
 actual fun InteractiveConflictMap(
     mapCenter: GeoLocation,
@@ -320,76 +349,105 @@ actual fun InteractiveConflictMap(
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(mapCenter, zoomLevel, panOffsetX, panOffsetY) {
-                    detectDragGestures { change, dragAmount ->
-                        change.consume()
-                        onPan(dragAmount.x, dragAmount.y)
+                .pointerInput(mapCenter, zoomLevel) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            if (event.type == PointerEventType.Scroll) {
+                                val scrollY = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
+                                if (scrollY != 0f) {
+                                    event.changes.forEach { it.consume() }
+                                    val zoomStep = if (scrollY < 0f) 0.25f else -0.25f
+                                    val newZoom = (zoomLevel + zoomStep).coerceIn(2.0f, 18.0f)
+                                    onMapCenterAndZoomChanged(mapCenter, newZoom)
+                                }
+                            }
+                        }
                     }
                 }
-                .pointerInput(mapCenter, zoomLevel, panOffsetX, panOffsetY) {
-                    detectTransformGestures { _, pan, zoom, _ ->
-                        if (pan.x != 0f || pan.y != 0f) {
-                            onPan(pan.x, pan.y)
+                .pointerInput(mapCenter, zoomLevel) {
+                    var currentLat = mapCenter.latitude
+                    var currentLon = mapCenter.longitude
+
+                    detectDragGestures(
+                        onDragStart = {
+                            currentLat = mapCenter.latitude
+                            currentLon = mapCenter.longitude
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            val zoomFactor = 2.0.pow(zoomLevel.toDouble())
+                            val lonDelta = -dragAmount.x * (360.0 / (256.0 * zoomFactor))
+                            val latDelta = dragAmount.y * (180.0 / (256.0 * zoomFactor))
+
+                            currentLat = (currentLat + latDelta).coerceIn(-85.05112878, 85.05112878)
+                            currentLon = (currentLon + lonDelta).coerceIn(-180.0, 180.0)
+
+                            onMapCenterAndZoomChanged(GeoLocation(currentLat, currentLon), zoomLevel)
                         }
-                        if (zoom > 1.05f) {
-                            onZoomIn()
-                        } else if (zoom < 0.95f) {
-                            onZoomOut()
-                        }
-                    }
+                    )
                 }
                 .pointerInput(
-                    mapCenter, zoomLevel, panOffsetX, panOffsetY,
+                    mapCenter, zoomLevel,
                     wildlifeOccurrences, collisionHotspots, barriers, populationZones
                 ) {
-                    detectTapGestures { tapOffset ->
-                        if (canvasSize.width <= 0f || canvasSize.height <= 0f) return@detectTapGestures
-
-                        var clickedSelection: MapFeatureSelection? = null
-                        var minDistance = 32f // Hit test threshold in pixels
-
-                        // Check collision hotspots
-                        for (hotspot in collisionHotspots) {
-                            val pos = geoToPixel(hotspot.location, mapCenter, zoomLevel, panOffsetX, panOffsetY, canvasSize)
-                            val dist = distanceBetween(tapOffset, pos)
-                            if (dist < minDistance) {
-                                minDistance = dist
-                                clickedSelection = MapFeatureSelection.Hotspot(hotspot)
+                    detectTapGestures(
+                        onDoubleTap = { tapOffset ->
+                            if (canvasSize.width > 0f && canvasSize.height > 0f) {
+                                val targetGeo = pixelToGeo(tapOffset, mapCenter, zoomLevel, canvasSize)
+                                val newZoom = (zoomLevel + 1.0f).coerceAtMost(18.0f)
+                                onMapCenterAndZoomChanged(targetGeo, newZoom)
                             }
-                        }
+                        },
+                        onTap = { tapOffset ->
+                            if (canvasSize.width <= 0f || canvasSize.height <= 0f) return@detectTapGestures
 
-                        // Check wildlife occurrences
-                        for (wildlife in wildlifeOccurrences) {
-                            val pos = geoToPixel(wildlife.location, mapCenter, zoomLevel, panOffsetX, panOffsetY, canvasSize)
-                            val dist = distanceBetween(tapOffset, pos)
-                            if (dist < minDistance) {
-                                minDistance = dist
-                                clickedSelection = MapFeatureSelection.Wildlife(wildlife)
+                            var clickedSelection: MapFeatureSelection? = null
+                            var minDistance = 32f // Hit test threshold in pixels
+
+                            // Check collision hotspots
+                            for (hotspot in collisionHotspots) {
+                                val pos = geoToPixel(hotspot.location, mapCenter, zoomLevel, panOffsetX, panOffsetY, canvasSize)
+                                val dist = distanceBetween(tapOffset, pos)
+                                if (dist < minDistance) {
+                                    minDistance = dist
+                                    clickedSelection = MapFeatureSelection.Hotspot(hotspot)
+                                }
                             }
-                        }
 
-                        // Check barriers
-                        for (barrier in barriers) {
-                            val pos = geoToPixel(barrier.location, mapCenter, zoomLevel, panOffsetX, panOffsetY, canvasSize)
-                            val dist = distanceBetween(tapOffset, pos)
-                            if (dist < minDistance) {
-                                minDistance = dist
-                                clickedSelection = MapFeatureSelection.Barrier(barrier)
+                            // Check wildlife occurrences
+                            for (wildlife in wildlifeOccurrences) {
+                                val pos = geoToPixel(wildlife.location, mapCenter, zoomLevel, panOffsetX, panOffsetY, canvasSize)
+                                val dist = distanceBetween(tapOffset, pos)
+                                if (dist < minDistance) {
+                                    minDistance = dist
+                                    clickedSelection = MapFeatureSelection.Wildlife(wildlife)
+                                }
                             }
-                        }
 
-                        // Check population density zones
-                        for (zone in populationZones) {
-                            val pos = geoToPixel(zone.centerLocation, mapCenter, zoomLevel, panOffsetX, panOffsetY, canvasSize)
-                            val dist = distanceBetween(tapOffset, pos)
-                            if (dist < minDistance) {
-                                minDistance = dist
-                                clickedSelection = MapFeatureSelection.Population(zone)
+                            // Check barriers
+                            for (barrier in barriers) {
+                                val pos = geoToPixel(barrier.location, mapCenter, zoomLevel, panOffsetX, panOffsetY, canvasSize)
+                                val dist = distanceBetween(tapOffset, pos)
+                                if (dist < minDistance) {
+                                    minDistance = dist
+                                    clickedSelection = MapFeatureSelection.Barrier(barrier)
+                                }
                             }
-                        }
 
-                        onFeatureSelected(clickedSelection)
-                    }
+                            // Check population density zones
+                            for (zone in populationZones) {
+                                val pos = geoToPixel(zone.centerLocation, mapCenter, zoomLevel, panOffsetX, panOffsetY, canvasSize)
+                                val dist = distanceBetween(tapOffset, pos)
+                                if (dist < minDistance) {
+                                    minDistance = dist
+                                    clickedSelection = MapFeatureSelection.Population(zone)
+                                }
+                            }
+
+                            onFeatureSelected(clickedSelection)
+                        }
+                    )
                 }
         ) {
             canvasSize = size

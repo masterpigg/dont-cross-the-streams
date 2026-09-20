@@ -91,6 +91,14 @@ import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Overlay
 import java.io.File
+import kotlin.math.abs
+
+private class ProgrammaticMapState {
+    var lastTargetLat: Double = 0.0
+    var lastTargetLon: Double = 0.0
+    var lastTargetZoom: Double = 0.0
+    var onMapCenterAndZoomChanged: (GeoLocation, Float) -> Unit = { _, _ -> }
+}
 
 val EsriWorldStreetMapTileSource = object : XYTileSource(
     "EsriWorldStreetMap",
@@ -261,6 +269,15 @@ actual fun InteractiveConflictMap(
                 )
             }
 
+            val mapState = remember {
+                ProgrammaticMapState().apply {
+                    lastTargetLat = mapCenter.latitude
+                    lastTargetLon = mapCenter.longitude
+                    lastTargetZoom = zoomLevel.toDouble()
+                }
+            }
+            mapState.onMapCenterAndZoomChanged = onMapCenterAndZoomChanged
+
             AndroidView(
                 factory = { ctx ->
                     val osmdroidDir = File(ctx.cacheDir, "osmdroid")
@@ -292,20 +309,30 @@ actual fun InteractiveConflictMap(
 
                         addMapListener(object : MapListener {
                             override fun onScroll(event: ScrollEvent?): Boolean {
+                                val center = this@apply.mapCenter ?: return false
                                 val newCenter = GeoLocation(
-                                    latitude = this@apply.mapCenter.latitude,
-                                    longitude = this@apply.mapCenter.longitude
+                                    latitude = center.latitude,
+                                    longitude = center.longitude
                                 )
-                                onMapCenterAndZoomChanged(newCenter, this@apply.zoomLevelDouble.toFloat())
+                                val newZoom = this@apply.zoomLevelDouble.toFloat()
+                                mapState.lastTargetLat = newCenter.latitude
+                                mapState.lastTargetLon = newCenter.longitude
+                                mapState.lastTargetZoom = newZoom.toDouble()
+                                mapState.onMapCenterAndZoomChanged(newCenter, newZoom)
                                 return false
                             }
 
                             override fun onZoom(event: ZoomEvent?): Boolean {
+                                val center = this@apply.mapCenter ?: return false
                                 val newCenter = GeoLocation(
-                                    latitude = this@apply.mapCenter.latitude,
-                                    longitude = this@apply.mapCenter.longitude
+                                    latitude = center.latitude,
+                                    longitude = center.longitude
                                 )
-                                onMapCenterAndZoomChanged(newCenter, this@apply.zoomLevelDouble.toFloat())
+                                val newZoom = this@apply.zoomLevelDouble.toFloat()
+                                mapState.lastTargetLat = newCenter.latitude
+                                mapState.lastTargetLon = newCenter.longitude
+                                mapState.lastTargetZoom = newZoom.toDouble()
+                                mapState.onMapCenterAndZoomChanged(newCenter, newZoom)
                                 return false
                             }
                         })
@@ -321,19 +348,21 @@ actual fun InteractiveConflictMap(
                     conflictOverlay.pulseAlphaFraction = pulseAlphaFraction
                     conflictOverlay.onFeatureSelected = onFeatureSelected
 
-                    val currentGeo = mapView.mapCenter
                     val targetLat = mapCenter.latitude
                     val targetLon = mapCenter.longitude
                     val targetZoom = zoomLevel.toDouble()
 
-                    val latDiff = Math.abs(currentGeo.latitude - targetLat)
-                    val lonDiff = Math.abs(currentGeo.longitude - targetLon)
-                    val zoomDiff = Math.abs(mapView.zoomLevelDouble - targetZoom)
+                    val latDiff = abs(mapState.lastTargetLat - targetLat)
+                    val lonDiff = abs(mapState.lastTargetLon - targetLon)
+                    val zoomDiff = abs(mapState.lastTargetZoom - targetZoom)
 
-                    if (latDiff > 0.02 || lonDiff > 0.02) {
+                    if (latDiff > 0.0001 || lonDiff > 0.0001) {
+                        mapState.lastTargetLat = targetLat
+                        mapState.lastTargetLon = targetLon
                         mapView.controller.animateTo(GeoPoint(targetLat, targetLon))
                     }
-                    if (zoomDiff > 0.3) {
+                    if (zoomDiff > 0.05) {
+                        mapState.lastTargetZoom = targetZoom
                         mapView.controller.setZoom(targetZoom)
                     }
 
