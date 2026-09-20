@@ -1,0 +1,77 @@
+package com.example.dont_cross_the_streams
+
+import com.example.dont_cross_the_streams.data.repository.DatasetTransparencyRepositoryImpl
+import com.example.dont_cross_the_streams.domain.model.AuthType
+import com.example.dont_cross_the_streams.domain.model.DataSourceCategory
+import com.example.dont_cross_the_streams.ui.transparency.TransparencyHubViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class TransparencyHubViewModelTest {
+
+    private val testDispatcher = StandardTestDispatcher()
+    private lateinit var repository: DatasetTransparencyRepositoryImpl
+    private lateinit var viewModel: TransparencyHubViewModel
+
+    @BeforeTest
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        repository = DatasetTransparencyRepositoryImpl()
+        viewModel = TransparencyHubViewModel(repository)
+    }
+
+    @AfterTest
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    @Test
+    fun loadDataSources_populatesAllSources() = runTest {
+        testDispatcher.scheduler.advanceUntilIdle()
+        val state = viewModel.uiState.value
+
+        assertEquals(19, state.dataSources.size)
+        assertNotNull(state.selectedDataSource)
+    }
+
+    @Test
+    fun updateSearchQuery_filtersDataSourcesByText() = runTest {
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.updateSearchQuery("eBird")
+
+        val state = viewModel.uiState.value
+        assertTrue(state.filteredDataSources.isNotEmpty())
+        assertTrue(state.filteredDataSources.any { it.id == "ebird" })
+    }
+
+    @Test
+    fun setCategoryFilter_filtersByWildlifeObservation() = runTest {
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.setCategoryFilter(DataSourceCategory.WILDLIFE_OBSERVATION)
+
+        val state = viewModel.uiState.value
+        assertEquals(DataSourceCategory.WILDLIFE_OBSERVATION, state.selectedCategory)
+        assertTrue(state.filteredDataSources.all { it.category == DataSourceCategory.WILDLIFE_OBSERVATION })
+    }
+
+    @Test
+    fun setAuthTypeFilter_filtersByPublicOpen() = runTest {
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.setAuthTypeFilter(AuthType.NONE_PUBLIC)
+
+        val state = viewModel.uiState.value
+        assertEquals(AuthType.NONE_PUBLIC, state.selectedAuthType)
+        assertTrue(state.filteredDataSources.all { it.authType == AuthType.NONE_PUBLIC })
+    }
+}
