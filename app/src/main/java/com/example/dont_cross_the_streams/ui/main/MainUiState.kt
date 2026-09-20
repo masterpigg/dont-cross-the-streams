@@ -8,5 +8,6 @@ enum class MainTab {
 
 data class MainUiState(
     val currentTab: MainTab = MainTab.MAP,
-    val selectedRegionIdForMatrix: String? = null
+    val selectedRegionIdForMatrix: String? = null,
+    val selectedDataSourceIdForHub: String? = null
 )

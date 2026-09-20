@@ -23,4 +23,13 @@ class MainViewModel : ViewModel() {
             )
         }
     }
+
+    fun navigateToTransparencyHub(dataSourceId: String? = null) {
+        _uiState.update {
+            it.copy(
+                currentTab = MainTab.TRANSPARENCY_HUB,
+                selectedDataSourceIdForHub = dataSourceId
+            )
+        }
+    }
 }

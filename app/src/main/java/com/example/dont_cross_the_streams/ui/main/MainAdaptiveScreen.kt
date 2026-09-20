@@ -66,7 +66,9 @@ fun MainAdaptiveScreen(
     MainAdaptiveScreenContent(
         currentTab = mainUiState.currentTab,
         selectedRegionIdForMatrix = mainUiState.selectedRegionIdForMatrix,
+        selectedDataSourceIdForHub = mainUiState.selectedDataSourceIdForHub,
         onTabSelected = mainViewModel::selectTab,
+        onNavigateToTransparencyHub = mainViewModel::navigateToTransparencyHub,
         riskMatrixViewModel = riskMatrixViewModel,
         transparencyHubViewModel = transparencyHubViewModel,
         modifier = modifier
@@ -78,7 +80,9 @@ fun MainAdaptiveScreen(
 fun MainAdaptiveScreenContent(
     currentTab: MainTab,
     selectedRegionIdForMatrix: String?,
+    selectedDataSourceIdForHub: String? = null,
     onTabSelected: (MainTab) -> Unit,
+    onNavigateToTransparencyHub: (String?) -> Unit = {},
     riskMatrixViewModel: RiskMatrixViewModel = viewModel(),
     transparencyHubViewModel: TransparencyHubViewModel = viewModel(),
     modifier: Modifier = Modifier
@@ -137,6 +141,8 @@ fun MainAdaptiveScreenContent(
                 MainTabContent(
                     currentTab = currentTab,
                     selectedRegionIdForMatrix = selectedRegionIdForMatrix,
+                    selectedDataSourceIdForHub = selectedDataSourceIdForHub,
+                    onNavigateToTransparencyHub = onNavigateToTransparencyHub,
                     riskMatrixViewModel = riskMatrixViewModel,
                     transparencyHubViewModel = transparencyHubViewModel
                 )
@@ -169,6 +175,8 @@ fun MainAdaptiveScreenContent(
                 MainTabContent(
                     currentTab = currentTab,
                     selectedRegionIdForMatrix = selectedRegionIdForMatrix,
+                    selectedDataSourceIdForHub = selectedDataSourceIdForHub,
+                    onNavigateToTransparencyHub = onNavigateToTransparencyHub,
                     riskMatrixViewModel = riskMatrixViewModel,
                     transparencyHubViewModel = transparencyHubViewModel
                 )
@@ -181,6 +189,8 @@ fun MainAdaptiveScreenContent(
 private fun MainTabContent(
     currentTab: MainTab,
     selectedRegionIdForMatrix: String?,
+    selectedDataSourceIdForHub: String?,
+    onNavigateToTransparencyHub: (String?) -> Unit,
     riskMatrixViewModel: RiskMatrixViewModel,
     transparencyHubViewModel: TransparencyHubViewModel
 ) {
@@ -188,7 +198,7 @@ private fun MainTabContent(
     val currentKey: NavRoute = when (currentTab) {
         MainTab.MAP -> NavRoute.Map
         MainTab.RISK_MATRIX -> NavRoute.RiskMatrix(selectedRegionIdForMatrix)
-        MainTab.TRANSPARENCY_HUB -> NavRoute.TransparencyHub()
+        MainTab.TRANSPARENCY_HUB -> NavRoute.TransparencyHub(selectedDataSourceIdForHub)
     }
 
     val backStack = remember(currentKey) { mutableStateListOf(currentKey) }
@@ -198,7 +208,9 @@ private fun MainTabContent(
         entryProvider = { key: NavRoute ->
             when (key) {
                 is NavRoute.Map -> NavEntry(key) {
-                    ConflictMapScreen()
+                    ConflictMapScreen(
+                        onNavigateToTransparencyHub = onNavigateToTransparencyHub
+                    )
                 }
                 is NavRoute.RiskMatrix -> NavEntry(key) {
                     RiskMatrixScreen(
@@ -209,7 +221,7 @@ private fun MainTabContent(
                 is NavRoute.TransparencyHub -> NavEntry(key) {
                     TransparencyHubScreen(
                         viewModel = transparencyHubViewModel,
-                        initialDataSourceId = key.dataSourceId
+                        initialDataSourceId = key.dataSourceId ?: selectedDataSourceIdForHub
                     )
                 }
             }

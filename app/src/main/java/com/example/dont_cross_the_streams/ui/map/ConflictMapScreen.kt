@@ -39,7 +39,8 @@ import com.example.dont_cross_the_streams.ui.theme.DontcrossthestreamsTheme
 @Composable
 fun ConflictMapScreen(
     modifier: Modifier = Modifier,
-    viewModel: MapViewModel = viewModel()
+    viewModel: MapViewModel = viewModel(),
+    onNavigateToTransparencyHub: ((String?) -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -61,6 +62,7 @@ fun ConflictMapScreen(
         onZoomOut = viewModel::zoomOut,
         onResetView = viewModel::resetView,
         onMapCenterAndZoomChanged = viewModel::updateMapCenterAndZoom,
+        onNavigateToTransparencyHub = onNavigateToTransparencyHub,
         modifier = modifier
     )
 }
@@ -85,7 +87,8 @@ fun ConflictMapScreenContent(
     onZoomIn: () -> Unit = {},
     onZoomOut: () -> Unit = {},
     onResetView: () -> Unit = {},
-    onMapCenterAndZoomChanged: (GeoLocation, Float) -> Unit = { _, _ -> }
+    onMapCenterAndZoomChanged: (GeoLocation, Float) -> Unit = { _, _ -> },
+    onNavigateToTransparencyHub: ((String?) -> Unit)? = null
 ) {
     val activeFilterCount = (5 - uiState.selectedTaxonGroups.size) + (BarrierType.entries.size - uiState.selectedBarrierTypes.size)
 
@@ -210,7 +213,8 @@ fun ConflictMapScreenContent(
         uiState.selectedFeature?.let { selected ->
             FeatureDetailBottomSheet(
                 feature = selected,
-                onDismiss = { onFeatureSelected(null) }
+                onDismiss = { onFeatureSelected(null) },
+                onNavigateToTransparencyHub = onNavigateToTransparencyHub
             )
         }
     }
