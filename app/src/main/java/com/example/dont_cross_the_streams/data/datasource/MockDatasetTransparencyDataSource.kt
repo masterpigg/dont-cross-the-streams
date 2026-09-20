@@ -241,6 +241,51 @@ object MockDatasetTransparencyDataSource {
             documentationUrl = "https://wiki.openstreetmap.org/wiki/Overpass_API",
             authType = AuthType.NONE_PUBLIC,
             keyUtility = "Real-time vector geographic boundaries for linear barrier features including fences, highways, and railways."
+        ),
+        DataSourceInfo(
+            id = "idnr_wildlife",
+            name = "Illinois Department of Natural Resources (IDNR)",
+            category = DataSourceCategory.WILDLIFE_OBSERVATION,
+            description = "Statewide wildlife census, herpetological surveys, and Snake Road seasonal migration tracking managed by IDNR.",
+            baseURL = "https://dnr.illinois.gov/data-api/",
+            keyEndpoints = listOf(
+                "herpetology/snake-road",
+                "wildlife/census",
+                "corridors/crossings"
+            ),
+            documentationUrl = "https://dnr.illinois.gov/",
+            authType = AuthType.NONE_PUBLIC,
+            keyUtility = "Authoritative Illinois reptile, amphibian, and game species occurrence datasets."
+        ),
+        DataSourceInfo(
+            id = "wdfw_salmon",
+            name = "Washington Department of Fish and Wildlife (WDFW)",
+            category = DataSourceCategory.WILDLIFE_OBSERVATION,
+            description = "Salmonid escapement counts, fish passage barrier inventories, and wildlife collision tracking across Washington state.",
+            baseURL = "https://wdfw.wa.gov/api/v1/",
+            keyEndpoints = listOf(
+                "salmon/counts",
+                "barriers/fish-passage",
+                "wildlife/collisions"
+            ),
+            documentationUrl = "https://wdfw.wa.gov/",
+            authType = AuthType.NONE_PUBLIC,
+            keyUtility = "Statewide Washington salmon escapement telemetry, fish ladders, and ungulate crossing data."
+        ),
+        DataSourceInfo(
+            id = "usace_nwd_salmon",
+            name = "USACE NWD Salmon Passage API",
+            category = DataSourceCategory.INFRASTRUCTURE_BARRIER,
+            description = "U.S. Army Corps of Engineers Northwestern Division daily fish ladder passage counts and dam operations.",
+            baseURL = "https://www.nwd.usace.army.mil/api/salmon/",
+            keyEndpoints = listOf(
+                "fishcounts/daily",
+                "ladders/status",
+                "dams/telemetry"
+            ),
+            documentationUrl = "https://www.nwd.usace.army.mil/",
+            authType = AuthType.NONE_PUBLIC,
+            keyUtility = "Real-time daily counts for Chinook, Sockeye, and Steelhead migrating through Columbia River and Ballard Locks fish ladders."
         )
     )
 }

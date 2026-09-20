@@ -37,11 +37,11 @@ class TransparencyHubViewModelTest {
     }
 
     @Test
-    fun loadDataSources_populatesAllSixteenSources() = runTest {
+    fun loadDataSources_populatesAllSources() = runTest {
         testDispatcher.scheduler.advanceUntilIdle()
         val state = viewModel.uiState.value
 
-        assertEquals(16, state.dataSources.size)
+        assertEquals(19, state.dataSources.size)
         assertNotNull(state.selectedDataSource)
     }
 

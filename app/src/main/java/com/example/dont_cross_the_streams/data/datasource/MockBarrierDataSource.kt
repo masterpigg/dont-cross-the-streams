@@ -178,6 +178,100 @@ object MockBarrierDataSource {
             heightMeters = 4.5,
             lengthKm = 35.0,
             description = "Solid concrete soundwall perimeter completely blocking terrestrial mammal passage between urban parklands."
+        ),
+
+        // Illinois Linear Barriers
+        BarrierFeature(
+            id = "bar_il_001",
+            type = BarrierType.HIGHWAY,
+            name = "LaRue Road 345 (Snake Road Seasonal Closure)",
+            location = GeoLocation(37.5600, -89.4400),
+            geometryPath = listOf(
+                GeoLocation(37.5750, -89.4380),
+                GeoLocation(37.5600, -89.4400),
+                GeoLocation(37.5450, -89.4420)
+            ),
+            impactLevel = ImpactLevel.HIGH,
+            source = "US Forest Service Shawnee NF / IDNR",
+            heightMeters = 0.2,
+            lengthKm = 4.3,
+            description = "2.5-mile forest gravel road bisecting limestone bluffs and LaRue Swamp. Closed for 2 months each spring and autumn by USFS for mass reptile and amphibian migration."
+        ),
+        BarrierFeature(
+            id = "bar_il_002",
+            type = BarrierType.HIGHWAY,
+            name = "Interstate 55 Illinois Central Expressway",
+            location = GeoLocation(38.8500, -89.9200),
+            geometryPath = listOf(
+                GeoLocation(38.6200, -90.1500),
+                GeoLocation(38.8500, -89.9200),
+                GeoLocation(39.8000, -89.6500)
+            ),
+            impactLevel = ImpactLevel.SEVERE,
+            source = "IDOT GIS / OpenStreetMap",
+            heightMeters = 1.4,
+            lengthKm = 150.0,
+            description = "High-volume 6-lane interstate with continuous concrete jersey barriers dividing Metro East and central Illinois wildlife habitats."
+        ),
+        BarrierFeature(
+            id = "bar_il_003",
+            type = BarrierType.DAM,
+            name = "Melvin Price Locks & Dam (Mississippi River Dam 26)",
+            location = GeoLocation(38.8680, -90.1530),
+            geometryPath = listOf(
+                GeoLocation(38.8680, -90.1530)
+            ),
+            impactLevel = ImpactLevel.SEVERE,
+            source = "USACE National Inventory of Dams",
+            heightMeters = 24.0,
+            lengthKm = 0.35,
+            description = "Major navigation lock and dam structure on the upper Mississippi River, altering river flow velocity and impeding aquatic species movement."
+        ),
+
+        // Washington Linear Barriers
+        BarrierFeature(
+            id = "bar_wa_001",
+            type = BarrierType.CANAL,
+            name = "Hiram M. Chittenden Locks (Ballard Locks)",
+            location = GeoLocation(47.6655, -122.3972),
+            geometryPath = listOf(
+                GeoLocation(47.6655, -122.3972)
+            ),
+            impactLevel = ImpactLevel.HIGH,
+            source = "USACE Seattle District / WDFW",
+            heightMeters = 8.0,
+            lengthKm = 0.15,
+            description = "Navigation lock complex connecting marine Puget Sound to freshwater Lake Washington. Salmon migration relies on a retrofitted 21-weir fish ladder."
+        ),
+        BarrierFeature(
+            id = "bar_wa_002",
+            type = BarrierType.DAM,
+            name = "Grand Coulee Dam (Upper Columbia Blockage)",
+            location = GeoLocation(47.9570, -118.9810),
+            geometryPath = listOf(
+                GeoLocation(47.9570, -118.9810)
+            ),
+            impactLevel = ImpactLevel.SEVERE,
+            source = "US Bureau of Reclamation / USACE NID",
+            heightMeters = 168.0,
+            lengthKm = 1.58,
+            description = "Massive concrete gravity dam permanently blocking over 1,000 miles of historical upper Columbia River salmon spawning grounds with no fish passage."
+        ),
+        BarrierFeature(
+            id = "bar_wa_003",
+            type = BarrierType.HIGHWAY,
+            name = "Interstate 90 Snoqualmie Pass Highway",
+            location = GeoLocation(47.3800, -121.4000),
+            geometryPath = listOf(
+                GeoLocation(47.4800, -121.7800),
+                GeoLocation(47.3800, -121.4000),
+                GeoLocation(47.2000, -120.9800)
+            ),
+            impactLevel = ImpactLevel.SEVERE,
+            source = "WSDOT GIS / OpenStreetMap",
+            heightMeters = 1.2,
+            lengthKm = 240.0,
+            description = "High-volume 6-lane interstate dividing North and South Cascade mountain ecosystems; now mitigated by new wildlife overpass bridges."
         )
     )
 }

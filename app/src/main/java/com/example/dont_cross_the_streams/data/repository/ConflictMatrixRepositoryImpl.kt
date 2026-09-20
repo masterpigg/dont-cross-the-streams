@@ -240,6 +240,46 @@ class ConflictMatrixRepositoryImpl : ConflictMatrixRepository {
                     MitigationSolution("Pigeon River Gorge Wildlife Overpass Bridge", "Wildlife Overpass", "Proposed green overpass connecting Great Smoky Mountains with Pisgah National Forest.", "$14M", 88, "In Planning"),
                     MitigationSolution("Bridge Underpass Retrofits", "Eco-Culvert", "Adding dry shelf footpaths beneath river bridges for black bears and bobcats.", "$1.8M", 82, "Recommended")
                 )
+            ),
+            RiskMatrixScore(
+                id = "rms_il_001",
+                region = "Shawnee NF Snake Road Migration",
+                centerLocation = GeoLocation(37.5600, -89.4400),
+                animalDensityScore = 96.0,
+                barrierDensityScore = 85.0,
+                collisionCount = 120,
+                humanPressure = 32.0,
+                compositeConflictScore = 88,
+                riskLevel = RiskLevel.HIGH,
+                severityAnalysis = "Critical mass biannual reptile and amphibian migration between LaRue-Pine Hills limestone bluffs and LaRue Swamp. Road traffic poses extreme mortality risk during seasonal crossings.",
+                severanceCauses = listOf(
+                    SeveranceCause("Bi-Annual Road Crossing", "LaRue Road 345 cuts across the exact 2.5 mile migration vector between winter hibernation bluffs and summer wetland habitat.", "Critical"),
+                    SeveranceCause("Vehicle Strike Mortality", "High mortality rate for cottonmouths, rattlesnakes, and salamanders when road is unclosed.", "Critical")
+                ),
+                mitigationSolutions = listOf(
+                    MitigationSolution("USFS Seasonal Road Closure (Oct & Apr)", "Directional Fencing", "Bi-annual 2-month closure of LaRue Road 345 to all motor vehicles enforced by US Forest Service.", "$50K", 98, "Implemented"),
+                    MitigationSolution("Eco-Passage Underpasses with Drift Fencing", "Eco-Culvert", "Construct permanent low-clearance reptile underpasses with continuous drift walls.", "$1.2M", 90, "Recommended")
+                )
+            ),
+            RiskMatrixScore(
+                id = "rms_wa_001",
+                region = "Ballard Locks & Salmon Passage",
+                centerLocation = GeoLocation(47.6700, -122.4000),
+                animalDensityScore = 94.0,
+                barrierDensityScore = 92.0,
+                collisionCount = 95,
+                humanPressure = 88.0,
+                compositeConflictScore = 91,
+                riskLevel = RiskLevel.HIGH,
+                severityAnalysis = "Severe aquatic migration bottleneck at Hiram M. Chittenden Locks connecting Lake Washington to Puget Sound. Chinook and Sockeye salmon runs depend entirely on fish ladder passage.",
+                severanceCauses = listOf(
+                    SeveranceCause("Salinity & Elevation Hydraulic Barrier", "Double locks barrier interrupts natural salmon smolt and adult spawning movement between marine and freshwater.", "Critical"),
+                    SeveranceCause("Pinniped Predation Chokepoint", "California sea lions and harbor seals exploit narrow lock entrance to prey on migrating salmon.", "High")
+                ),
+                mitigationSolutions = listOf(
+                    MitigationSolution("Ballard Locks Fish Ladder Modernization", "Fish Ladder", "Upgraded 21-weir fish ladder with viewing chamber, attraction flow pumps, and temperature controls.", "$14M", 92, "Implemented"),
+                    MitigationSolution("Acoustic Deterrent Pinniped System", "Dynamic Speed Corridor", "Non-harmful acoustic harassment devices to prevent sea lion predation at lock entrance.", "$800K", 75, "In Planning")
+                )
             )
         )
         emit(defaultScores)

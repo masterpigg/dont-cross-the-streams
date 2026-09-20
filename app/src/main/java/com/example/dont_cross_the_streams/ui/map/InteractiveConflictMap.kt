@@ -372,26 +372,26 @@ fun InteractiveConflictMap(
                 )
 
                 ConflictRegionPreset.entries.forEach { preset ->
-                    val isMissouri = preset.name.startsWith("MISSOURI") || preset.name.startsWith("OZARK") || preset.name.startsWith("ST_LOUIS")
+                    val isHighlighted = preset.name.startsWith("MISSOURI") || preset.name.startsWith("OZARK") || preset.name.startsWith("ST_LOUIS") || preset.name.startsWith("ILLINOIS") || preset.name.startsWith("WASHINGTON")
                     AssistChip(
                         onClick = { onSelectPreset(preset) },
                         label = {
                             Text(
                                 text = preset.title,
                                 style = MaterialTheme.typography.labelSmall,
-                                fontWeight = if (isMissouri) FontWeight.Bold else FontWeight.Normal
+                                fontWeight = if (isHighlighted) FontWeight.Bold else FontWeight.Normal
                             )
                         },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Rounded.LocationOn,
                                 contentDescription = null,
-                                tint = if (isMissouri) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
+                                tint = if (isHighlighted) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(16.dp)
                             )
                         },
                         colors = AssistChipDefaults.assistChipColors(
-                            containerColor = if (isMissouri)
+                            containerColor = if (isHighlighted)
                                 MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f)
                             else
                                 MaterialTheme.colorScheme.surface

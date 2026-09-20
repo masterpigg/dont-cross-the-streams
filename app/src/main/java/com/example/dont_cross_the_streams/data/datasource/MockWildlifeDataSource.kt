@@ -285,6 +285,164 @@ object MockWildlifeDataSource {
             timestamp = System.currentTimeMillis() - 86400000L * 2,
             source = "iNaturalist",
             conservationStatus = "Least Concern"
+        ),
+
+        // Illinois Wildlife Occurrences
+        WildlifeOccurrence(
+            id = "occ_il_001",
+            species = "Agkistrodon piscivorus",
+            commonName = "Western Cottonmouth",
+            location = GeoLocation(37.5600, -89.4400),
+            taxonGroup = "Reptiles",
+            observationCount = 78,
+            timestamp = System.currentTimeMillis() - 86400000L * 1,
+            source = "Illinois DNR / USFS Herpetology Census",
+            conservationStatus = "Protected"
+        ),
+        WildlifeOccurrence(
+            id = "occ_il_002",
+            species = "Crotalus horridus",
+            commonName = "Timber Rattlesnake",
+            location = GeoLocation(37.5620, -89.4380),
+            taxonGroup = "Reptiles",
+            observationCount = 24,
+            timestamp = System.currentTimeMillis() - 86400000L * 2,
+            source = "Illinois Natural History Survey",
+            conservationStatus = "Threatened"
+        ),
+        WildlifeOccurrence(
+            id = "occ_il_003",
+            species = "Agkistrodon contortrix",
+            commonName = "Eastern Copperhead",
+            location = GeoLocation(37.5580, -89.4420),
+            taxonGroup = "Reptiles",
+            observationCount = 31,
+            timestamp = System.currentTimeMillis() - 86400000L * 3,
+            source = "iNaturalist",
+            conservationStatus = "Least Concern"
+        ),
+        WildlifeOccurrence(
+            id = "occ_il_004",
+            species = "Eurycea lucifuga",
+            commonName = "Cave Salamander",
+            location = GeoLocation(37.5650, -89.4350),
+            taxonGroup = "Amphibians",
+            observationCount = 45,
+            timestamp = System.currentTimeMillis() - 86400000L * 1,
+            source = "Illinois DNR",
+            conservationStatus = "Special Concern"
+        ),
+        WildlifeOccurrence(
+            id = "occ_il_005",
+            species = "Kinosternon subrubrum",
+            commonName = "Mississippi Mud Turtle",
+            location = GeoLocation(37.5550, -89.4450),
+            taxonGroup = "Reptiles",
+            observationCount = 19,
+            timestamp = System.currentTimeMillis() - 86400000L * 4,
+            source = "iNaturalist",
+            conservationStatus = "Endangered"
+        ),
+        WildlifeOccurrence(
+            id = "occ_il_006",
+            species = "Haliaeetus leucocephalus",
+            commonName = "Bald Eagle",
+            location = GeoLocation(38.8680, -90.1530),
+            taxonGroup = "Birds",
+            observationCount = 38,
+            timestamp = System.currentTimeMillis() - 86400000L * 1,
+            source = "eBird / Audubon Illinois",
+            conservationStatus = "Least Concern"
+        ),
+        WildlifeOccurrence(
+            id = "occ_il_007",
+            species = "Lontra canadensis",
+            commonName = "North American River Otter",
+            location = GeoLocation(38.6500, -89.9800),
+            taxonGroup = "Mammals",
+            observationCount = 14,
+            timestamp = System.currentTimeMillis() - 86400000L * 2,
+            source = "Illinois DNR Wildlife Division",
+            conservationStatus = "Least Concern"
+        ),
+
+        // Washington Wildlife Occurrences
+        WildlifeOccurrence(
+            id = "occ_wa_001",
+            species = "Oncorhynchus tshawytscha",
+            commonName = "Chinook Salmon (King Salmon)",
+            location = GeoLocation(47.6655, -122.3972),
+            taxonGroup = "Fish",
+            observationCount = 1420,
+            timestamp = System.currentTimeMillis() - 86400000L * 1,
+            source = "WDFW / USACE NWD Salmon Passage API",
+            conservationStatus = "Threatened"
+        ),
+        WildlifeOccurrence(
+            id = "occ_wa_002",
+            species = "Oncorhynchus nerka",
+            commonName = "Sockeye Salmon",
+            location = GeoLocation(47.6680, -122.4000),
+            taxonGroup = "Fish",
+            observationCount = 890,
+            timestamp = System.currentTimeMillis() - 86400000L * 1,
+            source = "WDFW Salmon Passage API",
+            conservationStatus = "Special Concern"
+        ),
+        WildlifeOccurrence(
+            id = "occ_wa_003",
+            species = "Oncorhynchus mykiss",
+            commonName = "Steelhead Trout",
+            location = GeoLocation(45.6440, -121.9410),
+            taxonGroup = "Fish",
+            observationCount = 620,
+            timestamp = System.currentTimeMillis() - 86400000L * 2,
+            source = "NOAA Fisheries / WDFW",
+            conservationStatus = "Threatened"
+        ),
+        WildlifeOccurrence(
+            id = "occ_wa_004",
+            species = "Orcinus orca",
+            commonName = "Southern Resident Killer Whale",
+            location = GeoLocation(47.6200, -122.4200),
+            taxonGroup = "Mammals",
+            observationCount = 18,
+            timestamp = System.currentTimeMillis() - 86400000L * 3,
+            source = "NOAA Fisheries / Orca Network",
+            conservationStatus = "Endangered"
+        ),
+        WildlifeOccurrence(
+            id = "occ_wa_005",
+            species = "Cervus canadensis roosevelti",
+            commonName = "Roosevelt Elk",
+            location = GeoLocation(47.3800, -121.4000),
+            taxonGroup = "Mammals",
+            observationCount = 64,
+            timestamp = System.currentTimeMillis() - 86400000L * 2,
+            source = "WDFW Telemetry / Movebank",
+            conservationStatus = "Protected"
+        ),
+        WildlifeOccurrence(
+            id = "occ_wa_006",
+            species = "Haliaeetus leucocephalus",
+            commonName = "Bald Eagle",
+            location = GeoLocation(47.6700, -122.3900),
+            taxonGroup = "Birds",
+            observationCount = 29,
+            timestamp = System.currentTimeMillis() - 86400000L * 1,
+            source = "eBird",
+            conservationStatus = "Least Concern"
+        ),
+        WildlifeOccurrence(
+            id = "occ_wa_007",
+            species = "Ursus arctos horribilis",
+            commonName = "Grizzly Bear",
+            location = GeoLocation(48.5000, -120.5000),
+            taxonGroup = "Mammals",
+            observationCount = 4,
+            timestamp = System.currentTimeMillis() - 86400000L * 5,
+            source = "USFWS / WDFW Recovery Team",
+            conservationStatus = "Threatened"
         )
     )
 
@@ -339,6 +497,80 @@ object MockWildlifeDataSource {
             source = "USFWS / eBird Aviation Hazard",
             highwayOrRouteName = "Missouri River Bridge Crossings (I-70 / US-54)",
             description = "Avian collision risk zone where river flyways intersect high-speed highway bridges and utility cables."
+        ),
+
+        // Illinois Collision Hotspots
+        CollisionHotspot(
+            id = "hotspot_il_001",
+            location = GeoLocation(37.5600, -89.4400),
+            incidentCount = 120,
+            primarySpeciesAffected = "Cottonmouth, Rattlesnake & Salamanders",
+            severity = CollisionSeverity.CRITICAL,
+            source = "USFS / Illinois DNR Herpetological Survey",
+            highwayOrRouteName = "LaRue Road 345 (Snake Road)",
+            description = "Biannual mass reptile and amphibian road crossing between limestone bluffs and LaRue Swamp. Road closed seasonally by US Forest Service."
+        ),
+        CollisionHotspot(
+            id = "hotspot_il_002",
+            location = GeoLocation(38.8500, -89.9200),
+            incidentCount = 310,
+            primarySpeciesAffected = "White-tailed Deer & Small Mammals",
+            severity = CollisionSeverity.CRITICAL,
+            source = "IDOT Safety Data / Illinois DNR",
+            highwayOrRouteName = "Interstate 55 Corridor",
+            description = "High density vehicle collision corridor across agricultural fields and river basin woodlands."
+        ),
+        CollisionHotspot(
+            id = "hotspot_il_003",
+            location = GeoLocation(38.8680, -90.1530),
+            incidentCount = 75,
+            primarySpeciesAffected = "Bald Eagle & Migratory Waterfowl",
+            severity = CollisionSeverity.MODERATE,
+            source = "USACE / eBird Flying Hazard Data",
+            highwayOrRouteName = "Melvin Price Locks & Dam Mississippi Crossing",
+            description = "Avian flyway intersection with river locks, high-voltage powerlines, and bridge traffic."
+        ),
+
+        // Washington Collision Hotspots
+        CollisionHotspot(
+            id = "hotspot_wa_001",
+            location = GeoLocation(47.6655, -122.3972),
+            incidentCount = 95,
+            primarySpeciesAffected = "Chinook & Sockeye Salmon",
+            severity = CollisionSeverity.CRITICAL,
+            source = "WDFW / USACE NWD",
+            highwayOrRouteName = "Hiram M. Chittenden Locks (Ballard Locks)",
+            description = "Critical aquatic passage bottleneck connecting Puget Sound to Lake Washington. Salmon runs traverse retrofitted fish ladder."
+        ),
+        CollisionHotspot(
+            id = "hotspot_wa_002",
+            location = GeoLocation(45.6440, -121.9410),
+            incidentCount = 240,
+            primarySpeciesAffected = "Chinook, Sockeye & Steelhead",
+            severity = CollisionSeverity.CRITICAL,
+            source = "USACE Northwestern Division / NOAA",
+            highwayOrRouteName = "Bonneville Dam Columbia River Corridor",
+            description = "Major hydroelectric barrier on Columbia River mainstem restricting upstream adult salmon and downstream smolt passage."
+        ),
+        CollisionHotspot(
+            id = "hotspot_wa_003",
+            location = GeoLocation(47.3800, -121.4000),
+            incidentCount = 190,
+            primarySpeciesAffected = "Roosevelt Elk & Black Bear",
+            severity = CollisionSeverity.HIGH,
+            source = "WSDOT Wildlife Incident Database",
+            highwayOrRouteName = "Interstate 90 Snoqualmie Pass Corridor",
+            description = "High-speed 6-lane interstate cutting through Cascade wildlife migration routes, mitigated by landmark overpass bridge."
+        ),
+        CollisionHotspot(
+            id = "hotspot_wa_004",
+            location = GeoLocation(48.0800, -123.5500),
+            incidentCount = 15,
+            primarySpeciesAffected = "Chinook & Coho Salmon",
+            severity = CollisionSeverity.LOW,
+            source = "National Park Service / Lower Elwha Klallam Tribe",
+            highwayOrRouteName = "Elwha River Restored Migration Zone",
+            description = "Former dam barrier zone fully restored after historical dam removal, restoring free salmon migration."
         ),
 
         // National Collision Hotspots

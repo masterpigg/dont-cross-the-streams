@@ -66,6 +66,38 @@ enum class ConflictRegionPreset(
         zoomLevel = 9.0f,
         taxonGroups = setOf("Mammals", "Reptiles"),
         barrierTypes = setOf(BarrierType.HIGHWAY, BarrierType.FENCE)
+    ),
+    ILLINOIS_SNAKE_ROAD(
+        title = "Illinois Snake Road",
+        subtitle = "Shawnee NF LaRue-Pine Hills seasonal migration",
+        center = GeoLocation(37.56, -89.44),
+        zoomLevel = 11.0f,
+        taxonGroups = setOf("Reptiles", "Amphibians"),
+        barrierTypes = setOf(BarrierType.HIGHWAY, BarrierType.FENCE)
+    ),
+    ILLINOIS_MISSISSIPPI_CORRIDOR(
+        title = "Metro East Illinois",
+        subtitle = "Illinois Metro East & I-55 deer corridor",
+        center = GeoLocation(38.65, -89.98),
+        zoomLevel = 10.0f,
+        taxonGroups = setOf("Birds", "Mammals", "Amphibians"),
+        barrierTypes = setOf(BarrierType.HIGHWAY, BarrierType.DAM, BarrierType.RAILWAY)
+    ),
+    WASHINGTON_BALLARD_LOCKS(
+        title = "Seattle Ballard Locks",
+        subtitle = "Ballard Locks & salmon ladder passage",
+        center = GeoLocation(47.67, -122.40),
+        zoomLevel = 12.0f,
+        taxonGroups = setOf("Fish", "Mammals", "Birds"),
+        barrierTypes = setOf(BarrierType.DAM, BarrierType.CANAL, BarrierType.URBAN_WALL)
+    ),
+    WASHINGTON_COLUMBIA_SALMON(
+        title = "Columbia River Salmon",
+        subtitle = "Columbia River dams & salmon passage",
+        center = GeoLocation(45.64, -121.94),
+        zoomLevel = 9.0f,
+        taxonGroups = setOf("Fish", "Mammals", "Birds"),
+        barrierTypes = setOf(BarrierType.DAM, BarrierType.HIGHWAY)
     )
 }
 

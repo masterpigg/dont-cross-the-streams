@@ -100,6 +100,28 @@ object MockPopulationDataSource {
             densityScore = 48.5, // Suburban / Rural mix
             urbanLevel = UrbanLevel.SUBURBAN,
             source = "US Census Bureau 2020"
+        ),
+
+        // Illinois Population Density Zones
+        PopulationDensityZone(
+            id = "pop_il_001",
+            regionName = "Metro East St. Louis Suburban Sprawl (St. Clair & Madison)",
+            boundingBox = BoundingBox(38.450, -90.200, 38.900, -89.700),
+            centerLocation = GeoLocation(38.6500, -89.9800),
+            densityScore = 1850.0,
+            urbanLevel = UrbanLevel.METROPOLITAN,
+            source = "US Census Bureau 2020 / East-West Gateway Council"
+        ),
+
+        // Washington Population Density Zones
+        PopulationDensityZone(
+            id = "pop_wa_001",
+            regionName = "Puget Sound / Seattle-Tacoma Metropolitan Encroachment",
+            boundingBox = BoundingBox(47.150, -122.550, 47.850, -122.100),
+            centerLocation = GeoLocation(47.6062, -122.3321),
+            densityScore = 2350.0,
+            urbanLevel = UrbanLevel.METROPOLITAN,
+            source = "US Census Bureau 2020 / Puget Sound Regional Council"
         )
     )
 }
