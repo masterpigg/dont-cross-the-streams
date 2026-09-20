@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.horizontalScroll
@@ -41,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -50,16 +52,21 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.asComposeImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.dont_cross_the_streams.domain.model.BarrierFeature
@@ -69,15 +76,140 @@ import com.example.dont_cross_the_streams.domain.model.CollisionSeverity
 import com.example.dont_cross_the_streams.domain.model.GeoLocation
 import com.example.dont_cross_the_streams.domain.model.PopulationDensityZone
 import com.example.dont_cross_the_streams.domain.model.WildlifeOccurrence
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import org.jetbrains.skia.Image as SkiaImage
 import kotlin.js.ExperimentalJsExport
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.ln
 import kotlin.math.pow
+import kotlin.math.roundToInt
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 @OptIn(ExperimentalJsExport::class)
 @JsFun("(lat, lon, zoom) => { if (window.syncWebMap) window.syncWebMap(lat, lon, zoom); }")
 private external fun syncWebMapJs(lat: Double, lon: Double, zoom: Double)
+
+@OptIn(ExperimentalJsExport::class)
+@JsFun("""
+(z, x, y) => {
+    if (!window.wasmMapTiles) window.wasmMapTiles = {};
+    const tileKey = z + '_' + x + '_' + y;
+    if (window.wasmMapTiles[tileKey]) return;
+
+    window.wasmMapTiles[tileKey] = 'LOADING';
+
+    const urls = [
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/' + z + '/' + y + '/' + x,
+        'https://tile.openstreetmap.org/' + z + '/' + x + '/' + y + '.png',
+        'https://a.basemaps.cartocdn.com/rastertiles/voyager/' + z + '/' + x + '/' + y + '.png'
+    ];
+
+    function fetchUrl(index) {
+        if (index >= urls.length) {
+            window.wasmMapTiles[tileKey] = 'FAILED';
+            return;
+        }
+        fetch(urls[index])
+            .then(res => {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.arrayBuffer();
+            })
+            .then(buffer => {
+                const bytes = new Uint8Array(buffer);
+                let binary = '';
+                const chunkSize = 8192;
+                for (let i = 0; i < bytes.length; i += chunkSize) {
+                    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+                }
+                window.wasmMapTiles[tileKey] = btoa(binary);
+            })
+            .catch(() => {
+                fetchUrl(index + 1);
+            });
+    }
+
+    fetchUrl(0);
+}
+""")
+private external fun requestWasmTileJs(z: Int, x: Int, y: Int)
+
+@OptIn(ExperimentalJsExport::class)
+@JsFun("""
+(tileKey) => {
+    if (window.wasmMapTiles && window.wasmMapTiles[tileKey] && window.wasmMapTiles[tileKey] !== 'LOADING' && window.wasmMapTiles[tileKey] !== 'FAILED') {
+        return window.wasmMapTiles[tileKey];
+    }
+    return null;
+}
+""")
+private external fun getWasmTileBase64Js(tileKey: String): String?
+
+private fun decodeBase64(input: String): ByteArray {
+    val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    val table = IntArray(256) { -1 }
+    for (i in chars.indices) table[chars[i].code] = i
+
+    val cleanInput = input.replace("=", "").replace("\n", "").replace("\r", "")
+    val len = cleanInput.length
+    val outLen = (len * 6) / 8
+    val out = ByteArray(outLen)
+
+    var buffer = 0
+    var bits = 0
+    var outIdx = 0
+
+    for (i in 0 until len) {
+        val v = table[cleanInput[i].code]
+        if (v >= 0) {
+            buffer = (buffer shl 6) or v
+            bits += 6
+            if (bits >= 8) {
+                bits -= 8
+                out[outIdx++] = ((buffer shr bits) and 0xFF).toByte()
+            }
+        }
+    }
+    return out
+}
+
+private fun lonToWorldX(lon: Double, z: Int): Double {
+    val numTiles = 1 shl z
+    return ((lon + 180.0) / 360.0) * numTiles * 256.0
+}
+
+private fun latToWorldY(lat: Double, z: Int): Double {
+    val numTiles = 1 shl z
+    val rad = lat.coerceIn(-85.05112878, 85.05112878) * PI / 180.0
+    val sinRad = sin(rad)
+    val y = 0.5 - (ln((1.0 + sinRad) / (1.0 - sinRad)) / (4.0 * PI))
+    return y * numTiles * 256.0
+}
+
+private fun geoToPixel(
+    geo: GeoLocation,
+    centerGeo: GeoLocation,
+    zoomLevel: Float,
+    panX: Float,
+    panY: Float,
+    canvasSize: Size
+): Offset {
+    val z = zoomLevel.roundToInt().coerceIn(2, 18)
+    val scale = 2.0.pow((zoomLevel - z).toDouble()).toFloat()
+
+    val centerWx = lonToWorldX(centerGeo.longitude, z)
+    val centerWy = latToWorldY(centerGeo.latitude, z)
+
+    val wx = lonToWorldX(geo.longitude, z)
+    val wy = latToWorldY(geo.latitude, z)
+
+    val x = (canvasSize.width / 2f) + panX + ((wx - centerWx) * scale).toFloat()
+    val y = (canvasSize.height / 2f) + panY + ((wy - centerWy) * scale).toFloat()
+
+    return Offset(x, y)
+}
 
 @Composable
 actual fun InteractiveConflictMap(
@@ -107,7 +239,10 @@ actual fun InteractiveConflictMap(
 
     val textMeasurer = rememberTextMeasurer()
 
-    // Pulse animation for hotspot pins
+    // Cache for decoded raster map tile bitmaps
+    val tileBitmapCache = remember { mutableStateMapOf<String, ImageBitmap>() }
+
+    // Pulse animation for hotspot hazard pins
     val infiniteTransition = rememberInfiniteTransition(label = "pulseTransition")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1.0f,
@@ -130,10 +265,67 @@ actual fun InteractiveConflictMap(
 
     var canvasSize by remember { mutableStateOf(Size.Zero) }
 
+    // Background tile loading worker
+    LaunchedEffect(mapCenter, zoomLevel, panOffsetX, panOffsetY, canvasSize) {
+        if (canvasSize.width <= 0f || canvasSize.height <= 0f) return@LaunchedEffect
+
+        val z = zoomLevel.roundToInt().coerceIn(2, 18)
+        val scale = 2.0.pow((zoomLevel - z).toDouble()).toFloat()
+        val centerWx = lonToWorldX(mapCenter.longitude, z)
+        val centerWy = latToWorldY(mapCenter.latitude, z)
+
+        val halfW = (canvasSize.width / 2f) / scale
+        val halfH = (canvasSize.height / 2f) / scale
+        val minWx = centerWx - halfW - panOffsetX / scale
+        val maxWx = centerWx + halfW - panOffsetX / scale
+        val minWy = centerWy - halfH - panOffsetY / scale
+        val maxWy = centerWy + halfH - panOffsetY / scale
+
+        val numTiles = 1 shl z
+        val minTileX = (minWx / 256.0).toInt().coerceIn(0, numTiles - 1)
+        val maxTileX = (maxWx / 256.0).toInt().coerceIn(0, numTiles - 1)
+        val minTileY = (minWy / 256.0).toInt().coerceIn(0, numTiles - 1)
+        val maxTileY = (maxWy / 256.0).toInt().coerceIn(0, numTiles - 1)
+
+        // Poll for newly downloaded tile images in JS
+        while (isActive) {
+            var anyPending = false
+            for (tx in minTileX..maxTileX) {
+                for (ty in minTileY..maxTileY) {
+                    val tileKey = "${z}_${tx}_${ty}"
+                    if (!tileBitmapCache.containsKey(tileKey)) {
+                        requestWasmTileJs(z, tx, ty)
+                        val base64 = getWasmTileBase64Js(tileKey)
+                        if (base64 != null) {
+                            try {
+                                val bytes = decodeBase64(base64)
+                                val skiaImg = SkiaImage.makeFromEncoded(bytes)
+                                val composeBmp = skiaImg.toComposeImageBitmap()
+                                tileBitmapCache[tileKey] = composeBmp
+                            } catch (e: Exception) {
+                                // ignore corrupt tile
+                            }
+                        } else {
+                            anyPending = true
+                        }
+                    }
+                }
+            }
+            if (!anyPending) break
+            delay(100)
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
+                .pointerInput(mapCenter, zoomLevel, panOffsetX, panOffsetY) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        onPan(dragAmount.x, dragAmount.y)
+                    }
+                }
                 .pointerInput(mapCenter, zoomLevel, panOffsetX, panOffsetY) {
                     detectTransformGestures { _, pan, zoom, _ ->
                         if (pan.x != 0f || pan.y != 0f) {
@@ -202,17 +394,58 @@ actual fun InteractiveConflictMap(
         ) {
             canvasSize = size
 
-            // 1. Semi-transparent dark GIS overlay background tint (allows underlying Leaflet tiles to show cleanly)
-            drawRect(color = Color(0xB8121722))
+            // 1. Draw solid GIS map background base color
+            drawRect(color = Color(0xFF161C26))
 
-            // 2. Latitude & Longitude Grid Lines & Tick Labels
-            val gridStepPixels = 60f * (2.0f.pow((zoomLevel - 8f).coerceIn(-2f, 4f)))
+            // 2. Draw Raster Map Tiles (Esri World Street Map / OSM)
+            val z = zoomLevel.roundToInt().coerceIn(2, 18)
+            val scale = 2.0.pow((zoomLevel - z).toDouble()).toFloat()
+            val centerWx = lonToWorldX(mapCenter.longitude, z)
+            val centerWy = latToWorldY(mapCenter.latitude, z)
+
+            val tileSizeOnCanvas = (256.0 * scale).toFloat()
+
+            val halfW = (size.width / 2f) / scale
+            val halfH = (size.height / 2f) / scale
+            val minWx = centerWx - halfW - panOffsetX / scale
+            val maxWx = centerWx + halfW - panOffsetX / scale
+            val minWy = centerWy - halfH - panOffsetY / scale
+            val maxWy = centerWy + halfH - panOffsetY / scale
+
+            val numTiles = 1 shl z
+            val minTileX = (minWx / 256.0).toInt().coerceIn(0, numTiles - 1)
+            val maxTileX = (maxWx / 256.0).toInt().coerceIn(0, numTiles - 1)
+            val minTileY = (minWy / 256.0).toInt().coerceIn(0, numTiles - 1)
+            val maxTileY = (maxWy / 256.0).toInt().coerceIn(0, numTiles - 1)
+
+            for (tx in minTileX..maxTileX) {
+                for (ty in minTileY..maxTileY) {
+                    val tileKey = "${z}_${tx}_${ty}"
+                    val tileX = (size.width / 2f + panOffsetX) + ((tx * 256.0 - centerWx) * scale).toFloat()
+                    val tileY = (size.height / 2f + panOffsetY) + ((ty * 256.0 - centerWy) * scale).toFloat()
+
+                    val bitmap = tileBitmapCache[tileKey]
+                    if (bitmap != null) {
+                        drawImage(
+                            image = bitmap,
+                            dstOffset = IntOffset(tileX.roundToInt(), tileY.roundToInt()),
+                            dstSize = IntSize(tileSizeOnCanvas.roundToInt(), tileSizeOnCanvas.roundToInt())
+                        )
+                    }
+                }
+            }
+
+            // 3. Semi-transparent dark GIS overlay tint for high contrast UI overlays
+            drawRect(color = Color(0x770D121B))
+
+            // 4. Latitude & Longitude Coordinate Grid Lines & Tick Labels
+            val gridStepPixels = 80f * (2.0f.pow((zoomLevel - 8f).coerceIn(-2f, 4f)))
             var xGrid = (size.width / 2f + panOffsetX) % gridStepPixels
             if (xGrid < 0) xGrid += gridStepPixels
 
             while (xGrid < size.width) {
                 drawLine(
-                    color = Color(0x333A4B6E),
+                    color = Color(0x334A608A),
                     start = Offset(xGrid, 0f),
                     end = Offset(xGrid, size.height),
                     strokeWidth = 1f,
@@ -226,7 +459,7 @@ actual fun InteractiveConflictMap(
 
             while (yGrid < size.height) {
                 drawLine(
-                    color = Color(0x333A4B6E),
+                    color = Color(0x334A608A),
                     start = Offset(0f, yGrid),
                     end = Offset(size.width, yGrid),
                     strokeWidth = 1f,
@@ -235,7 +468,67 @@ actual fun InteractiveConflictMap(
                 yGrid += gridStepPixels
             }
 
-            // 3. Topological Vector Rivers (Missouri & Mississippi River Networks)
+            // 5. Geographic State Boundary Polygons & Outlines
+            val stateBoundaries = listOf(
+                // Missouri Outline
+                listOf(
+                    GeoLocation(40.60, -95.77), GeoLocation(40.60, -91.73), GeoLocation(40.38, -91.49),
+                    GeoLocation(39.14, -90.65), GeoLocation(38.85, -90.12), GeoLocation(37.00, -89.15),
+                    GeoLocation(36.00, -89.64), GeoLocation(36.00, -90.31), GeoLocation(36.50, -94.62),
+                    GeoLocation(36.50, -94.62), GeoLocation(39.10, -94.61), GeoLocation(40.60, -95.77)
+                ),
+                // Illinois West Boundary
+                listOf(
+                    GeoLocation(42.50, -90.64), GeoLocation(41.50, -90.50), GeoLocation(39.70, -91.35),
+                    GeoLocation(38.81, -90.12), GeoLocation(37.00, -89.15)
+                )
+            )
+
+            for (boundary in stateBoundaries) {
+                val path = Path()
+                var isFirst = true
+                for (pt in boundary) {
+                    val p = geoToPixel(pt, mapCenter, zoomLevel, panOffsetX, panOffsetY, size)
+                    if (isFirst) {
+                        path.moveTo(p.x, p.y)
+                        isFirst = false
+                    } else {
+                        path.lineTo(p.x, p.y)
+                    }
+                }
+                drawPath(
+                    path = path,
+                    color = Color(0x6680CBC4),
+                    style = Stroke(width = 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f)))
+                )
+            }
+
+            // 6. Major Cities Vector Markers & Name Labels
+            val cities = listOf(
+                Pair(GeoLocation(39.10, -94.58), "Kansas City"),
+                Pair(GeoLocation(38.63, -90.20), "St. Louis"),
+                Pair(GeoLocation(37.21, -93.29), "Springfield"),
+                Pair(GeoLocation(38.95, -92.33), "Columbia"),
+                Pair(GeoLocation(38.58, -92.17), "Jefferson City"),
+                Pair(GeoLocation(37.31, -89.52), "Cape Girardeau")
+            )
+
+            for ((cityLoc, cityName) in cities) {
+                val cityPt = geoToPixel(cityLoc, mapCenter, zoomLevel, panOffsetX, panOffsetY, size)
+                drawCircle(color = Color(0xFF4FC3F7), radius = 5f, center = cityPt)
+                drawCircle(color = Color.White, radius = 5f, center = cityPt, style = Stroke(width = 1.5f))
+
+                val cityText = textMeasurer.measure(
+                    text = cityName,
+                    style = TextStyle(color = Color(0xFFE0F7FA), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                )
+                drawText(
+                    textLayoutResult = cityText,
+                    topLeft = Offset(cityPt.x + 8f, cityPt.y - 8f)
+                )
+            }
+
+            // 7. Topological Vector Rivers (Missouri & Mississippi River Networks)
             val missouriRiverGeo = listOf(
                 GeoLocation(39.10, -94.60), // Kansas City
                 GeoLocation(38.95, -92.33), // Columbia
@@ -256,7 +549,7 @@ actual fun InteractiveConflictMap(
             }
             drawPath(
                 path = missouriPath,
-                color = Color(0x9929B6F6),
+                color = Color(0xB329B6F6),
                 style = Stroke(width = 4f, cap = StrokeCap.Round, join = StrokeJoin.Round)
             )
 
@@ -281,11 +574,11 @@ actual fun InteractiveConflictMap(
             }
             drawPath(
                 path = mississippiPath,
-                color = Color(0xB30288D1),
+                color = Color(0xCC0288D1),
                 style = Stroke(width = 6f, cap = StrokeCap.Round, join = StrokeJoin.Round)
             )
 
-            // 4. Topological Ozark Highlands Contour Curves
+            // 8. Topological Ozark Highlands Contour Curves
             val ozarkCenterGeo = GeoLocation(37.80, -92.50)
             val ozarkPixel = geoToPixel(ozarkCenterGeo, mapCenter, zoomLevel, panOffsetX, panOffsetY, size)
             val contourRadius = 220f * (2.0f.pow((zoomLevel - 8f).coerceIn(-1f, 3f)))
@@ -305,14 +598,14 @@ actual fun InteractiveConflictMap(
             // Geographic Regional Label
             val ozarkLabel = textMeasurer.measure(
                 text = "OZARK PLATEAU HIGHLANDS",
-                style = TextStyle(color = Color(0x77A5D6A7), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                style = TextStyle(color = Color(0x99A5D6A7), fontSize = 11.sp, fontWeight = FontWeight.Bold)
             )
             drawText(
                 textLayoutResult = ozarkLabel,
                 topLeft = Offset(ozarkPixel.x - ozarkLabel.size.width / 2f, ozarkPixel.y - 12f)
             )
 
-            // 5. Render Population Density Zones (Translucent glowing heatmaps)
+            // 9. Render Population Density Zones (Translucent glowing heatmaps)
             for (zone in populationZones) {
                 val center = geoToPixel(zone.centerLocation, mapCenter, zoomLevel, panOffsetX, panOffsetY, size)
                 val radius = (zone.densityScore.toFloat() / 20f).coerceIn(40f, 180f) * (zoomLevel / 10f)
@@ -346,7 +639,7 @@ actual fun InteractiveConflictMap(
                 )
             }
 
-            // 6. Render Barrier Features (Highways, Railways, Dams, Fences, Canals)
+            // 10. Render Barrier Features (Highways, Railways, Dams, Fences, Canals)
             for (barrier in barriers) {
                 val path = Path()
                 val barrierColor = getBarrierColor(barrier.type)
@@ -363,7 +656,6 @@ actual fun InteractiveConflictMap(
                         }
                     }
                 } else {
-                    // Draw a representative barrier line segment through the central location
                     val centerPt = geoToPixel(barrier.location, mapCenter, zoomLevel, panOffsetX, panOffsetY, size)
                     path.moveTo(centerPt.x - 60f, centerPt.y - 20f)
                     path.lineTo(centerPt.x + 60f, centerPt.y + 20f)
@@ -404,7 +696,7 @@ actual fun InteractiveConflictMap(
                 )
             }
 
-            // 7. Render Wildlife Occurrences (Species pins)
+            // 11. Render Wildlife Occurrences (Species pins)
             for (wildlife in wildlifeOccurrences) {
                 val pos = geoToPixel(wildlife.location, mapCenter, zoomLevel, panOffsetX, panOffsetY, size)
                 val taxonColor = getTaxonColor(wildlife.taxonGroup)
@@ -439,7 +731,7 @@ actual fun InteractiveConflictMap(
                 }
             }
 
-            // 8. Render Collision Hotspots (Hazard pins with pulsing rings)
+            // 12. Render Collision Hotspots (Hazard pins with pulsing rings)
             for (hotspot in collisionHotspots) {
                 val pos = geoToPixel(hotspot.location, mapCenter, zoomLevel, panOffsetX, panOffsetY, size)
                 val severityColor = getSeverityColor(hotspot.severity)
@@ -475,7 +767,7 @@ actual fun InteractiveConflictMap(
                 )
             }
 
-            // 9. Selected feature highlight ring
+            // 13. Selected feature highlight ring
             selectedFeature?.let { selection ->
                 val selectedLoc = when (selection) {
                     is MapFeatureSelection.Wildlife -> selection.occurrence.location
@@ -494,8 +786,8 @@ actual fun InteractiveConflictMap(
 
             // Scale & Map Attribution Text
             val attrText = textMeasurer.measure(
-                text = "© CARTO Voyager | OpenStreetMap | Esri World Street Map | Kotlin/Wasm GIS Engine",
-                style = TextStyle(color = Color(0xAAFFFFFF), fontSize = 10.sp)
+                text = "© Esri World Street Map | OpenStreetMap | CARTO | Kotlin/Wasm GIS Engine",
+                style = TextStyle(color = Color(0xEEFFFFFF), fontSize = 10.sp, fontWeight = FontWeight.Medium)
             )
             drawText(
                 textLayoutResult = attrText,
@@ -554,7 +846,7 @@ actual fun InteractiveConflictMap(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 IconButton(
-                    onClick = { onPanDirection(0.02, 0.0) },
+                    onClick = { onPanDirection(1.0, 0.0) },
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
@@ -564,7 +856,7 @@ actual fun InteractiveConflictMap(
                 }
                 Row {
                     IconButton(
-                        onClick = { onPanDirection(0.0, -0.02) },
+                        onClick = { onPanDirection(0.0, -1.0) },
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
@@ -583,7 +875,7 @@ actual fun InteractiveConflictMap(
                         )
                     }
                     IconButton(
-                        onClick = { onPanDirection(0.0, 0.02) },
+                        onClick = { onPanDirection(0.0, 1.0) },
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
@@ -593,7 +885,7 @@ actual fun InteractiveConflictMap(
                     }
                 }
                 IconButton(
-                    onClick = { onPanDirection(-0.02, 0.0) },
+                    onClick = { onPanDirection(-1.0, 0.0) },
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
@@ -621,7 +913,7 @@ actual fun InteractiveConflictMap(
                     )
                 }
                 Text(
-                    text = "${zoomLevel.toInt()}x",
+                    text = "${zoomLevel.roundToInt()}x",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -638,25 +930,6 @@ actual fun InteractiveConflictMap(
             }
         }
     }
-}
-
-private fun geoToPixel(
-    geo: GeoLocation,
-    centerGeo: GeoLocation,
-    zoom: Float,
-    panX: Float,
-    panY: Float,
-    canvasSize: Size
-): Offset {
-    val scale = 2.0.pow(zoom.toDouble()).toFloat() * 1200f
-    val cosLat = cos(centerGeo.latitude * PI / 180.0).toFloat().coerceAtLeast(0.1f)
-
-    val dLon = (geo.longitude - centerGeo.longitude).toFloat()
-    val dLat = (geo.latitude - centerGeo.latitude).toFloat()
-
-    val x = (canvasSize.width / 2f) + panX + (dLon * scale * cosLat)
-    val y = (canvasSize.height / 2f) + panY - (dLat * scale)
-    return Offset(x, y)
 }
 
 private fun distanceBetween(p1: Offset, p2: Offset): Float {

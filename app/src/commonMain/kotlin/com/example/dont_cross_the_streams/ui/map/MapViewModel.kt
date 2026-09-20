@@ -136,9 +136,9 @@ class MapViewModel(
 
     fun panDirection(dLat: Double, dLon: Double) {
         _uiState.update { currentState ->
-            val scale = 0.5 / 2.0.pow((currentState.zoomLevel - 4f).toDouble())
-            val newLat = (currentState.mapCenter.latitude + dLat * scale).coerceIn(-85.0, 85.0)
-            val newLon = (currentState.mapCenter.longitude + dLon * scale).coerceIn(-180.0, 180.0)
+            val panStep = 0.5 / 2.0.pow((currentState.zoomLevel - 6.0).coerceAtLeast(0.0))
+            val newLat = (currentState.mapCenter.latitude + dLat * panStep).coerceIn(-85.0, 85.0)
+            val newLon = (currentState.mapCenter.longitude + dLon * panStep).coerceIn(-180.0, 180.0)
             currentState.copy(
                 mapCenter = GeoLocation(newLat, newLon),
                 panOffsetX = 0f,
@@ -149,13 +149,13 @@ class MapViewModel(
 
     fun zoomIn() {
         _uiState.update { currentState ->
-            currentState.copy(zoomLevel = (currentState.zoomLevel + 0.8f).coerceAtMost(16f))
+            currentState.copy(zoomLevel = (currentState.zoomLevel + 0.5f).coerceAtMost(18f))
         }
     }
 
     fun zoomOut() {
         _uiState.update { currentState ->
-            currentState.copy(zoomLevel = (currentState.zoomLevel - 0.8f).coerceAtLeast(2f))
+            currentState.copy(zoomLevel = (currentState.zoomLevel - 0.5f).coerceAtLeast(2f))
         }
     }
 
