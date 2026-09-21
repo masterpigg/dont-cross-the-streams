@@ -41,7 +41,7 @@ class TransparencyHubViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
         val state = viewModel.uiState.value
 
-        assertEquals(19, state.dataSources.size)
+        assertEquals(23, state.dataSources.size)
         assertNotNull(state.selectedDataSource)
     }
 

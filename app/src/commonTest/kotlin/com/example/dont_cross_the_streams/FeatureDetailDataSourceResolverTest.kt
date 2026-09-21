@@ -13,19 +13,23 @@ class FeatureDetailDataSourceResolverTest {
 
     @Test
     fun resolveDataSourceUrl_mapsKnownSourcesToUrls() {
-        assertEquals("https://www.gbif.org/", resolveDataSourceUrl("GBIF"))
-        assertEquals("https://www.inaturalist.org/", resolveDataSourceUrl("iNaturalist"))
-        assertEquals("https://www.movebank.org/", resolveDataSourceUrl("Movebank GPS Tracking"))
-        assertEquals("https://ebird.org/", resolveDataSourceUrl("eBird"))
-        assertEquals("https://overpass-api.de/", resolveDataSourceUrl("OpenStreetMap Overpass"))
-        assertEquals("https://nid.sec.usace.army.mil/", resolveDataSourceUrl("USACE NID"))
-        assertEquals("https://www.census.gov/", resolveDataSourceUrl("US Census Bureau 2020"))
-        assertEquals("https://www.modot.org/", resolveDataSourceUrl("MoDOT Safety GIS"))
+        assertEquals("https://techdocs.gbif.org/en/openapi/", resolveDataSourceUrl("GBIF"))
+        assertEquals("https://api.inaturalist.org/v1/docs/", resolveDataSourceUrl("iNaturalist"))
+        assertEquals("https://github.com/movebank/movebank-api-doc", resolveDataSourceUrl("Movebank GPS Tracking"))
+        assertEquals("https://documenter.getpostman.com/view/664302/S1ENwy59", resolveDataSourceUrl("eBird"))
+        assertEquals("https://overpass-turbo.eu/", resolveDataSourceUrl("OpenStreetMap Overpass"))
+        assertEquals("https://nid.sec.usace.army.mil/api/developer", resolveDataSourceUrl("USACE NID"))
+        assertEquals("https://www.census.gov/data/developers/guidance/api-user-guide.html", resolveDataSourceUrl("US Census Bureau 2020"))
+        assertEquals("https://data-modot.opendata.arcgis.com/", resolveDataSourceUrl("MoDOT Safety GIS"))
         assertEquals("https://mdc.mo.gov/", resolveDataSourceUrl("MDC Wildlife Census"))
-        assertEquals("https://dnr.illinois.gov/", resolveDataSourceUrl("Illinois DNR"))
-        assertEquals("https://wdfw.wa.gov/", resolveDataSourceUrl("WDFW Salmon Passage API"))
-        assertEquals("https://wildlife.faa.gov/", resolveDataSourceUrl("FAA NWSD"))
+        assertEquals("https://clearinghouse.isgs.illinois.gov/", resolveDataSourceUrl("Illinois DNR"))
+        assertEquals("https://geodataservices.wdfw.wa.gov/arcgis/rest/services", resolveDataSourceUrl("WDFW Salmon Passage API"))
+        assertEquals("https://qa-wildlife.faa.gov/api/swagger/v1/swagger.json", resolveDataSourceUrl("FAA NWSD"))
         assertEquals("https://crashviewer.nhtsa.dot.gov/CrashAPI", resolveDataSourceUrl("NHTSA FARS"))
+        assertEquals("https://data-usdot.opendata.arcgis.com/", resolveDataSourceUrl("USDOT FHWA Wildlife Crossings Pilot Program (WCPP)"))
+        assertEquals("https://gisdata-caltrans.opendata.arcgis.com/", resolveDataSourceUrl("Caltrans Wildlife Crossing & Mitigation GIS API"))
+        assertEquals("https://data-cdot.opendata.arcgis.com/", resolveDataSourceUrl("CDOT Wildlife Mitigations & Overpasses API"))
+        assertEquals("https://gisdata-wsdot.opendata.arcgis.com/", resolveDataSourceUrl("WSDOT Fish Passage Barrier & Wildlife Crossing API"))
     }
 
     @Test
@@ -49,6 +53,10 @@ class FeatureDetailDataSourceResolverTest {
         assertEquals("wdfw_salmon", resolveTransparencyHubDataSourceId("WDFW Salmon Passage"))
         assertEquals("faa_nwsd", resolveTransparencyHubDataSourceId("FAA NWSD"))
         assertEquals("nhtsa_fars", resolveTransparencyHubDataSourceId("NHTSA FARS"))
+        assertEquals("usdot_wcpp", resolveTransparencyHubDataSourceId("USDOT WCPP"))
+        assertEquals("caltrans_crossings", resolveTransparencyHubDataSourceId("Caltrans Wildlife Crossing"))
+        assertEquals("cdot_crossings", resolveTransparencyHubDataSourceId("CDOT Overpasses"))
+        assertEquals("wsdot_fish_wildlife", resolveTransparencyHubDataSourceId("WSDOT Fish Passage Barrier"))
     }
 
     @Test

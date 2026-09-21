@@ -265,6 +265,65 @@ object MockBarrierDataSource {
             heightMeters = 1.2,
             lengthKm = 240.0,
             description = "High-volume 6-lane interstate dividing North and South Cascade mountain ecosystems; now mitigated by new wildlife overpass bridges."
+        ),
+        BarrierFeature(
+            id = "bar_wcpp_001",
+            type = BarrierType.HIGHWAY,
+            name = "I-90 & US-93 Federal Wildlife Crossing Pilot Corridor (WCPP)",
+            location = GeoLocation(46.8700, -114.0000),
+            geometryPath = listOf(
+                GeoLocation(46.9000, -114.1000),
+                GeoLocation(46.8700, -114.0000),
+                GeoLocation(46.8400, -113.9000)
+            ),
+            impactLevel = ImpactLevel.MODERATE,
+            source = "USDOT FHWA Wildlife Crossings Pilot Program (WCPP)",
+            heightMeters = 8.5,
+            lengthKm = 12.0,
+            description = "Federally funded wildlife overpass bridges, directional fencing, and eco-culverts constructed under the USDOT Bipartisan Infrastructure Law WCPP grant."
+        ),
+        BarrierFeature(
+            id = "bar_caltrans_001",
+            type = BarrierType.HIGHWAY,
+            name = "Wallis Annenberg Wildlife Crossing at Liberty Canyon (US-101)",
+            location = GeoLocation(34.1350, -118.7020),
+            geometryPath = listOf(
+                GeoLocation(34.1350, -118.7020)
+            ),
+            impactLevel = ImpactLevel.LOW,
+            source = "Caltrans Wildlife Crossing & Mitigation GIS API",
+            heightMeters = 12.0,
+            lengthKm = 0.12,
+            description = "World's largest vegetated wildlife overpass bridging 10 lanes of US-101 highway in Agoura Hills to reconnect cougar and bobcat habitat."
+        ),
+        BarrierFeature(
+            id = "bar_cdot_001",
+            type = BarrierType.HIGHWAY,
+            name = "State Highway 9 Kremmling & I-70 Vail Pass Wildlife Overpasses",
+            location = GeoLocation(39.9000, -106.3800),
+            geometryPath = listOf(
+                GeoLocation(39.9200, -106.4000),
+                GeoLocation(39.9000, -106.3800)
+            ),
+            impactLevel = ImpactLevel.MODERATE,
+            source = "CDOT Wildlife Mitigations & Overpasses API",
+            heightMeters = 7.0,
+            lengthKm = 18.0,
+            description = "Dedicated highway overpass bridges and 8-foot directional wildlife fencing reducing deer and elk vehicle collisions by over 90% across SH-9 and I-70."
+        ),
+        BarrierFeature(
+            id = "bar_wsdot_001",
+            type = BarrierType.HIGHWAY,
+            name = "I-90 Snoqualmie Pass Wildlife Overpass & Resort Creek Fish Ladder",
+            location = GeoLocation(47.3100, -121.2800),
+            geometryPath = listOf(
+                GeoLocation(47.3100, -121.2800)
+            ),
+            impactLevel = ImpactLevel.LOW,
+            source = "WSDOT Fish Passage Barrier & Wildlife Crossing API",
+            heightMeters = 10.0,
+            lengthKm = 0.08,
+            description = "Landmark 66-foot wide vegetated overpass bridge over 6 lanes of I-90 in Snoqualmie Pass integrated with salmon culvert fish ladders."
         )
     )
 }

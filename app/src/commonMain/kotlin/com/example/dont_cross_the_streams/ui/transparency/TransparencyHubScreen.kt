@@ -127,7 +127,7 @@ fun TransparencyHubScreenContent(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Open Public APIs & Environmental Databases (14 Sources)",
+                                text = "Open Public APIs & Environmental Databases (${uiState.dataSources.size} Sources)",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -215,7 +215,7 @@ private fun DataSourceListPane(
         OutlinedTextField(
             value = uiState.searchQuery,
             onValueChange = onSearchQueryChange,
-            placeholder = { Text("Search 14 Open Public APIs & Databases...") },
+            placeholder = { Text("Search ${uiState.dataSources.size} Open Public APIs & Databases...") },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Rounded.Search,

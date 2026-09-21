@@ -16,7 +16,7 @@ class DatasetTransparencyRepositoryTest {
     @Test
     fun getAllDataSources_returnsDataSources() = runTest {
         val dataSources = repository.getAllDataSources().first()
-        assertEquals(19, dataSources.size)
+        assertEquals(23, dataSources.size)
     }
 
     @Test
