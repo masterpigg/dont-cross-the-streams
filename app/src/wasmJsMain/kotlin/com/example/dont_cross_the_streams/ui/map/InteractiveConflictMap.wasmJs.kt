@@ -45,6 +45,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -266,6 +267,10 @@ actual fun InteractiveConflictMap(
         syncWebMapJs(mapCenter.latitude, mapCenter.longitude, zoomLevel.toDouble())
     }
 
+    val currentMapCenter by rememberUpdatedState(mapCenter)
+    val currentZoomLevel by rememberUpdatedState(zoomLevel)
+    val currentOnMapCenterAndZoomChanged by rememberUpdatedState(onMapCenterAndZoomChanged)
+
     val textMeasurer = rememberTextMeasurer()
 
     // Cache for decoded raster map tile bitmaps
@@ -357,29 +362,47 @@ actual fun InteractiveConflictMap(
                                 val scrollY = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
                                 if (scrollY != 0f) {
                                     event.changes.forEach { it.consume() }
-                                    val zoomStep = if (scrollY < 0f) 0.25f else -0.25f
-                                    val newZoom = (zoomLevel + zoomStep).coerceIn(2.0f, 18.0f)
-                                    onMapCenterAndZoomChanged(mapCenter, newZoom)
+                                    val zoomStep = if (scrollY < 0f) 0.5f else -0.5f
+                                    val newZoom = (currentZoomLevel + zoomStep).coerceIn(2.0f, 18.0f)
+                                    val mousePos = event.changes.firstOrNull()?.position
+                                    if (mousePos != null && canvasSize.width > 0f && canvasSize.height > 0f) {
+                                        val cursorGeo = pixelToGeo(mousePos, currentMapCenter, currentZoomLevel, canvasSize)
+                                        val z = newZoom.roundToInt().coerceIn(2, 18)
+                                        val scale = 2.0.pow((newZoom - z).toDouble()).toFloat()
+                                        val cursorWx = lonToWorldX(cursorGeo.longitude, z)
+                                        val cursorWy = latToWorldY(cursorGeo.latitude, z)
+                                        val newCenterWx = cursorWx - (mousePos.x - canvasSize.width / 2f) / scale
+                                        val newCenterWy = cursorWy - (mousePos.y - canvasSize.height / 2f) / scale
+                                        val numTiles = 1 shl z
+                                        val newLon = (newCenterWx / (numTiles * 256.0)) * 360.0 - 180.0
+                                        val yNorm = newCenterWy / (numTiles * 256.0)
+                                        val u2 = (0.5 - yNorm) * 2.0 * PI
+                                        val newLat = (atan(sinh(u2)) * 180.0 / PI).coerceIn(-85.05112878, 85.05112878)
+                                        currentOnMapCenterAndZoomChanged(GeoLocation(newLat, newLon.coerceIn(-180.0, 180.0)), newZoom)
+                                    } else {
+                                        currentOnMapCenterAndZoomChanged(currentMapCenter, newZoom)
+                                    }
                                 }
                             }
                         }
                     }
                 }
                 .pointerInput(Unit) {
-                    var currentLat = mapCenter.latitude
-                    var currentLon = mapCenter.longitude
+                    var currentLat = currentMapCenter.latitude
+                    var currentLon = currentMapCenter.longitude
 
                     detectDragGestures(
                         onDragStart = {
-                            currentLat = mapCenter.latitude
-                            currentLon = mapCenter.longitude
+                            currentLat = currentMapCenter.latitude
+                            currentLon = currentMapCenter.longitude
                         },
                         onDrag = { change, dragAmount ->
                             change.consume()
-                            val zoomFactor = 2.0.pow(zoomLevel.toDouble())
+                            val zoom = currentZoomLevel
+                            val zoomFactor = 2.0.pow(zoom.toDouble())
                             val lonDelta = -dragAmount.x * (360.0 / (256.0 * zoomFactor))
 
-                            // Mercator-aware latitude: scale by 1/cos(lat) to match
+                            // Mercator-aware latitude: scale by cos(lat) to match
                             // the non-linear vertical stretching of the projection
                             val latRad = currentLat * PI / 180.0
                             val mercatorScale = cos(latRad).coerceAtLeast(0.01)
@@ -388,7 +411,7 @@ actual fun InteractiveConflictMap(
                             currentLat = (currentLat + latDelta).coerceIn(-85.05112878, 85.05112878)
                             currentLon = (currentLon + lonDelta).coerceIn(-180.0, 180.0)
 
-                            onMapCenterAndZoomChanged(GeoLocation(currentLat, currentLon), zoomLevel)
+                            currentOnMapCenterAndZoomChanged(GeoLocation(currentLat, currentLon), zoom)
                         }
                     )
                 }
@@ -399,9 +422,9 @@ actual fun InteractiveConflictMap(
                     detectTapGestures(
                         onDoubleTap = { tapOffset ->
                             if (canvasSize.width > 0f && canvasSize.height > 0f) {
-                                val targetGeo = pixelToGeo(tapOffset, mapCenter, zoomLevel, canvasSize)
-                                val newZoom = (zoomLevel + 1.0f).coerceAtMost(18.0f)
-                                onMapCenterAndZoomChanged(targetGeo, newZoom)
+                                val targetGeo = pixelToGeo(tapOffset, currentMapCenter, currentZoomLevel, canvasSize)
+                                val newZoom = (currentZoomLevel + 1.0f).coerceAtMost(18.0f)
+                                currentOnMapCenterAndZoomChanged(targetGeo, newZoom)
                             }
                         },
                         onTap = { tapOffset ->
