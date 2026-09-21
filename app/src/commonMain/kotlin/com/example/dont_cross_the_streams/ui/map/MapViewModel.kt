@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.math.abs
 import kotlin.math.pow
 
 class MapViewModel(
@@ -173,18 +172,12 @@ class MapViewModel(
 
     fun updateMapCenterAndZoom(center: GeoLocation, zoom: Float) {
         _uiState.update { currentState ->
-            if (abs(currentState.mapCenter.latitude - center.latitude) > 0.0001 ||
-                abs(currentState.mapCenter.longitude - center.longitude) > 0.0001 ||
-                abs(currentState.zoomLevel - zoom) > 0.05f) {
-                currentState.copy(
-                    mapCenter = center,
-                    zoomLevel = zoom,
-                    panOffsetX = 0f,
-                    panOffsetY = 0f
-                )
-            } else {
-                currentState
-            }
+            currentState.copy(
+                mapCenter = center,
+                zoomLevel = zoom,
+                panOffsetX = 0f,
+                panOffsetY = 0f
+            )
         }
     }
 

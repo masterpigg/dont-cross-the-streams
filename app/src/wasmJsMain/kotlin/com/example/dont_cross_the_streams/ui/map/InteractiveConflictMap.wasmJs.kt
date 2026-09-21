@@ -349,7 +349,7 @@ actual fun InteractiveConflictMap(
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(mapCenter, zoomLevel) {
+                .pointerInput(Unit) {
                     awaitPointerEventScope {
                         while (true) {
                             val event = awaitPointerEvent()
@@ -365,7 +365,7 @@ actual fun InteractiveConflictMap(
                         }
                     }
                 }
-                .pointerInput(mapCenter, zoomLevel) {
+                .pointerInput(Unit) {
                     var currentLat = mapCenter.latitude
                     var currentLon = mapCenter.longitude
 
@@ -378,7 +378,12 @@ actual fun InteractiveConflictMap(
                             change.consume()
                             val zoomFactor = 2.0.pow(zoomLevel.toDouble())
                             val lonDelta = -dragAmount.x * (360.0 / (256.0 * zoomFactor))
-                            val latDelta = dragAmount.y * (180.0 / (256.0 * zoomFactor))
+
+                            // Mercator-aware latitude: scale by 1/cos(lat) to match
+                            // the non-linear vertical stretching of the projection
+                            val latRad = currentLat * PI / 180.0
+                            val mercatorScale = cos(latRad).coerceAtLeast(0.01)
+                            val latDelta = dragAmount.y * (360.0 / (256.0 * zoomFactor)) * mercatorScale
 
                             currentLat = (currentLat + latDelta).coerceIn(-85.05112878, 85.05112878)
                             currentLon = (currentLon + lonDelta).coerceIn(-180.0, 180.0)
