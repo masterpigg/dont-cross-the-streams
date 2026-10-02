@@ -66,6 +66,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.pointerInput
@@ -206,8 +207,9 @@ fun CanvasConflictMap(
     modifier: Modifier = Modifier,
     tileLoader: MapTileLoader? = null,
     attribution: String = "",
-    // Converts a platform wheel event's delta units to pixels (browsers may report lines/pages).
-    wheelDeltaUnitPx: (nativeEvent: Any?) -> Float = { 1f }
+    // Converts a wheel event's delta units to pixels (browsers may report lines/pages). Takes the
+    // whole event because the raw native event is only exposed on skiko (web/iOS), not Android.
+    wheelDeltaUnitPx: (event: PointerEvent) -> Float = { 1f }
 ) {
     // The map owns a live camera that gestures update synchronously every pointer event. Waiting
     // for each move to round-trip through the ViewModel is what made dragging lag, jump back and
@@ -343,7 +345,7 @@ fun CanvasConflictMap(
                             val deltaY = change.scrollDelta.y
                             if (deltaY == 0f) continue
                             event.changes.forEach { it.consume() }
-                            val unitPx = currentWheelDeltaUnitPx(event.nativeEvent)
+                            val unitPx = currentWheelDeltaUnitPx(event)
                             val gain = if (event.keyboardModifiers.isCtrlPressed) PINCH_ZOOM_PER_PX else WHEEL_ZOOM_PER_PX
                             val zoomDelta = (-deltaY * unitPx * gain).coerceIn(-1f, 1f)
                             moveCamera(0f, 0f, zoomDelta, change.position)

@@ -2,6 +2,7 @@ package com.example.dont_cross_the_streams.ui.map
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import com.example.dont_cross_the_streams.domain.model.BarrierFeature
 import com.example.dont_cross_the_streams.domain.model.CollisionHotspot
@@ -167,10 +168,10 @@ private object BrowserTileLoader : MapTileLoader {
     }
 }
 
-private fun browserWheelDeltaUnitPx(nativeEvent: Any?): Float {
+private fun browserWheelDeltaUnitPx(pointerEvent: PointerEvent): Float {
     // Compose hands us the browser WheelEvent as Any?; the JS side tolerates anything else.
     @Suppress("UNCHECKED_CAST_TO_EXTERNAL_INTERFACE")
-    val event = nativeEvent as? JsAny
+    val event = pointerEvent.nativeEvent as? JsAny
     return when (wheelDeltaModeJs(event)) {
         1 -> 40f // lines (Firefox)
         2 -> 800f // pages
