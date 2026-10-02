@@ -58,6 +58,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -74,10 +75,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.example.dont_cross_the_streams.domain.model.BarrierFeature
 import com.example.dont_cross_the_streams.domain.model.BarrierType
 import com.example.dont_cross_the_streams.domain.model.CollisionHotspot
+import com.example.dont_cross_the_streams.domain.model.CollisionReport
 import com.example.dont_cross_the_streams.domain.model.CollisionSeverity
 import com.example.dont_cross_the_streams.domain.model.GeoLocation
 import com.example.dont_cross_the_streams.domain.model.PopulationDensityZone
 import com.example.dont_cross_the_streams.domain.model.UrbanLevel
+import com.example.dont_cross_the_streams.domain.model.WildlifeCrossing
 import com.example.dont_cross_the_streams.domain.model.WildlifeOccurrence
 import com.example.dont_cross_the_streams.ui.theme.DontcrossthestreamsTheme
 import org.osmdroid.config.Configuration
@@ -135,7 +138,9 @@ actual fun InteractiveConflictMap(
     modifier: Modifier,
     onPanDirection: (dLat: Double, dLon: Double) -> Unit,
     onSelectPreset: (ConflictRegionPreset) -> Unit,
-    onMapCenterAndZoomChanged: (GeoLocation, Float) -> Unit
+    onMapCenterAndZoomChanged: (GeoLocation, Float) -> Unit,
+    wildlifeCrossings: List<WildlifeCrossing>,
+    collisionReports: List<CollisionReport>
 ) {
     // Pulse animation for critical collision hotspots
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -262,6 +267,8 @@ actual fun InteractiveConflictMap(
                     collisionHotspots = collisionHotspots,
                     barriers = barriers,
                     populationZones = populationZones,
+                    wildlifeCrossings = wildlifeCrossings,
+                    collisionReports = collisionReports,
                     selectedFeature = selectedFeature,
                     pulseRadiusFraction = pulseRadiusFraction,
                     pulseAlphaFraction = pulseAlphaFraction,
@@ -343,6 +350,8 @@ actual fun InteractiveConflictMap(
                     conflictOverlay.collisionHotspots = collisionHotspots
                     conflictOverlay.barriers = barriers
                     conflictOverlay.populationZones = populationZones
+                    conflictOverlay.wildlifeCrossings = wildlifeCrossings
+                    conflictOverlay.collisionReports = collisionReports
                     conflictOverlay.selectedFeature = selectedFeature
                     conflictOverlay.pulseRadiusFraction = pulseRadiusFraction
                     conflictOverlay.pulseAlphaFraction = pulseAlphaFraction
@@ -553,6 +562,14 @@ actual fun InteractiveConflictMap(
             }
         }
 
+        CollisionCrossingLegend(
+            showCollisionReports = collisionReports.isNotEmpty(),
+            showCrossings = wildlifeCrossings.isNotEmpty(),
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 16.dp, bottom = 56.dp)
+        )
+
         // Bottom Map Scale Indicator
         Surface(
             modifier = Modifier
@@ -592,6 +609,8 @@ private class ConflictMapOverlay(
     var collisionHotspots: List<CollisionHotspot>,
     var barriers: List<BarrierFeature>,
     var populationZones: List<PopulationDensityZone>,
+    var wildlifeCrossings: List<WildlifeCrossing>,
+    var collisionReports: List<CollisionReport>,
     var selectedFeature: MapFeatureSelection?,
     var pulseRadiusFraction: Float,
     var pulseAlphaFraction: Float,
@@ -790,6 +809,47 @@ private class ConflictMapOverlay(
             textPaint.textSize = 22f
             canvas.drawText(symbolLetter, px, py + 7f, textPaint)
         }
+
+        // Individual collision reports: small red dots so hundreds stay readable.
+        collisionReports.forEach { report ->
+            val pt = proj.toPixels(GeoPoint(report.location.latitude, report.location.longitude), reusedPoint)
+            val px = pt.x.toFloat()
+            val py = pt.y.toFloat()
+            val radius = if (selectedFeature?.id == report.id) 16f else 11f
+            fillPaint.color = 0x99000000.toInt()
+            canvas.drawCircle(px, py, radius + 4f, fillPaint)
+            fillPaint.color = CollisionReportColor.toArgb()
+            canvas.drawCircle(px, py, radius, fillPaint)
+            strokePaint.color = android.graphics.Color.WHITE
+            strokePaint.strokeWidth = 3f
+            canvas.drawCircle(px, py, radius, strokePaint)
+        }
+
+        // Wildlife crossings: green rounded squares with a bridge arch, distinct from round markers.
+        wildlifeCrossings.forEach { crossing ->
+            val pt = proj.toPixels(GeoPoint(crossing.location.latitude, crossing.location.longitude), reusedPoint)
+            val px = pt.x.toFloat()
+            val py = pt.y.toFloat()
+            val half = 28f
+            if (selectedFeature?.id == crossing.id) {
+                fillPaint.color = 0xFFFFD700.toInt()
+                canvas.drawCircle(px, py, half + 18f, fillPaint)
+            }
+            val rect = RectF(px - half, py - half, px + half, py + half)
+            fillPaint.color = WildlifeCrossingColor.toArgb()
+            canvas.drawRoundRect(rect, 10f, 10f, fillPaint)
+            strokePaint.color = android.graphics.Color.WHITE
+            strokePaint.strokeWidth = 5f
+            strokePaint.strokeCap = Paint.Cap.ROUND
+            canvas.drawRoundRect(rect, 10f, 10f, strokePaint)
+            val deckY = py - half * 0.35f
+            canvas.drawLine(px - half * 0.65f, deckY, px + half * 0.65f, deckY, strokePaint)
+            val arch = android.graphics.Path().apply {
+                moveTo(px - half * 0.55f, py + half * 0.55f)
+                quadTo(px, deckY - half * 0.2f, px + half * 0.55f, py + half * 0.55f)
+            }
+            canvas.drawPath(arch, strokePaint)
+        }
     }
 
     override fun onSingleTapConfirmed(e: MotionEvent?, mapView: MapView?): Boolean {
@@ -798,6 +858,27 @@ private class ConflictMapOverlay(
         val tapY = e.y
         val proj = mapView.projection
         val maxDistPx = 60f
+
+        // Small point markers first so they stay tappable next to the bigger pins.
+        collisionReports.forEach { report ->
+            val pt = proj.toPixels(GeoPoint(report.location.latitude, report.location.longitude), reusedPoint)
+            val dx = pt.x - tapX
+            val dy = pt.y - tapY
+            if (dx * dx + dy * dy <= 40f * 40f) {
+                onFeatureSelected(MapFeatureSelection.Collision(report))
+                return true
+            }
+        }
+
+        wildlifeCrossings.forEach { crossing ->
+            val pt = proj.toPixels(GeoPoint(crossing.location.latitude, crossing.location.longitude), reusedPoint)
+            val dx = pt.x - tapX
+            val dy = pt.y - tapY
+            if (dx * dx + dy * dy <= maxDistPx * maxDistPx) {
+                onFeatureSelected(MapFeatureSelection.Crossing(crossing))
+                return true
+            }
+        }
 
         wildlifeOccurrences.forEach { occ ->
             val pt = proj.toPixels(GeoPoint(occ.location.latitude, occ.location.longitude), reusedPoint)

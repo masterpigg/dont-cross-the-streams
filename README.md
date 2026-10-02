@@ -23,6 +23,8 @@ Human civilization relies heavily on closed-loop infrastructure networks—highw
 An interactive, high-performance geospatial viewer powered by Esri / OpenStreetMap raster tile engines:
 - **Wildlife Occurrences Layer**: Real-time species sightings categorized by ecological sensitivity and conservation status.
 - **Collision & Roadkill Hotspots**: Pulsing halo overlays highlighting high-frequency incident corridors.
+- **Collision Reports**: Individual dead-animal reports at their exact location (live from iNaturalist's "Alive or Dead: Dead" annotation for the area on screen), shown as small red dots.
+- **Wildlife Crossings**: Overpasses, underpasses and culverts as green bridge markers, so you can compare where animals are helped across with where they are being hit. Selecting a hotspot, crossing or report shows the nearest crossing and nearby collisions.
 - **Linear Infrastructure Barriers**: Color-coded networks of interstates, passenger/freight railways, dams, and urban boundaries.
 - **Population Density Heatmaps**: Human development footprint indices integrated directly into ecological overlays.
 

@@ -13,7 +13,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CarCrash
 import androidx.compose.material.icons.rounded.FilterList
+import androidx.compose.material.icons.rounded.Forest
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Pets
 import androidx.compose.material.icons.rounded.Route
@@ -50,7 +52,13 @@ fun LayerToggleBar(
     onOpenFilterSheet: () -> Unit,
     modifier: Modifier = Modifier,
     activePresetName: String? = null,
-    activeFilterCount: Int = 0
+    activeFilterCount: Int = 0,
+    showCrossings: Boolean = true,
+    showCollisionReports: Boolean = true,
+    collisionReportCount: Int = 0,
+    collisionReportStatus: CollisionReportStatus = CollisionReportStatus.IDLE,
+    onToggleCrossings: () -> Unit = {},
+    onToggleCollisionReports: () -> Unit = {}
 ) {
     Surface(
         modifier = modifier
@@ -152,6 +160,28 @@ fun LayerToggleBar(
                 )
 
                 LayerChip(
+                    selected = showCollisionReports,
+                    onClick = onToggleCollisionReports,
+                    label = when {
+                        !showCollisionReports -> "Collision Reports"
+                        collisionReportStatus == CollisionReportStatus.LOADING -> "Collision Reports (loading…)"
+                        collisionReportStatus == CollisionReportStatus.UNAVAILABLE && collisionReportCount == 0 ->
+                            "Collision Reports (offline)"
+                        else -> "Collision Reports ($collisionReportCount)"
+                    },
+                    icon = Icons.Rounded.CarCrash,
+                    activeColor = CollisionReportColor
+                )
+
+                LayerChip(
+                    selected = showCrossings,
+                    onClick = onToggleCrossings,
+                    label = "Wildlife Crossings",
+                    icon = Icons.Rounded.Forest,
+                    activeColor = WildlifeCrossingColor
+                )
+
+                LayerChip(
                     selected = showBarriers,
                     onClick = onToggleBarriers,
                     label = "Barriers",
@@ -223,3 +253,7 @@ private fun LayerChip(
         shape = RoundedCornerShape(16.dp)
     )
 }
+
+// Shared by every platform's map renderer so the legend chips match the markers.
+val WildlifeCrossingColor = Color(0xFF00C853)
+val CollisionReportColor = Color(0xFFFF1744)

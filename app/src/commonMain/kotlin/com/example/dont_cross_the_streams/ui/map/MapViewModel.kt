@@ -2,13 +2,18 @@ package com.example.dont_cross_the_streams.ui.map
 
 import com.example.dont_cross_the_streams.ui.common.ViewModel
 import com.example.dont_cross_the_streams.data.repository.BarrierRepositoryImpl
+import com.example.dont_cross_the_streams.data.repository.CollisionReportRepositoryImpl
 import com.example.dont_cross_the_streams.data.repository.ConflictMatrixRepositoryImpl
 import com.example.dont_cross_the_streams.data.repository.WildlifeRepositoryImpl
 import com.example.dont_cross_the_streams.domain.model.BarrierType
+import com.example.dont_cross_the_streams.domain.model.BoundingBox
 import com.example.dont_cross_the_streams.domain.model.GeoLocation
 import com.example.dont_cross_the_streams.domain.repository.BarrierRepository
+import com.example.dont_cross_the_streams.domain.repository.CollisionReportRepository
 import com.example.dont_cross_the_streams.domain.repository.ConflictMatrixRepository
 import com.example.dont_cross_the_streams.domain.repository.WildlifeRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,19 +21,23 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.math.pow
 
 class MapViewModel(
     private val wildlifeRepository: WildlifeRepository = WildlifeRepositoryImpl(),
     private val barrierRepository: BarrierRepository = BarrierRepositoryImpl(),
-    private val conflictMatrixRepository: ConflictMatrixRepository = ConflictMatrixRepositoryImpl()
+    private val conflictMatrixRepository: ConflictMatrixRepository = ConflictMatrixRepositoryImpl(),
+    private val collisionReportRepository: CollisionReportRepository = CollisionReportRepositoryImpl()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MapUiState(isLoading = true))
     val uiState: StateFlow<MapUiState> = _uiState.asStateFlow()
 
+    private var collisionJob: Job? = null
+    private var lastCollisionBounds: BoundingBox? = null
+
     init {
         loadMapData()
+        scheduleCollisionRefresh(immediate = true)
     }
 
     fun loadMapData() {
@@ -39,21 +48,23 @@ class MapViewModel(
                     wildlifeRepository.getWildlifeOccurrences(),
                     wildlifeRepository.getCollisionHotspots(),
                     barrierRepository.getBarrierFeatures(),
-                    conflictMatrixRepository.getPopulationDensityZones()
-                ) { occurrences, hotspots, barriers, popZones ->
-                    Quadruple(occurrences, hotspots, barriers, popZones)
-                }.catch { e ->
-                    _uiState.update { it.copy(isLoading = false, errorMessage = e.message ?: "Error loading map data") }
-                }.collect { (occurrences, hotspots, barriers, popZones) ->
-                    _uiState.update {
-                        it.copy(
+                    conflictMatrixRepository.getPopulationDensityZones(),
+                    barrierRepository.getWildlifeCrossings()
+                ) { occurrences, hotspots, barriers, popZones, crossings ->
+                    { state: MapUiState ->
+                        state.copy(
                             allWildlifeOccurrences = occurrences,
                             allCollisionHotspots = hotspots,
                             allBarriers = barriers,
                             allPopulationZones = popZones,
+                            allWildlifeCrossings = crossings,
                             isLoading = false
                         )
                     }
+                }.catch { e ->
+                    _uiState.update { it.copy(isLoading = false, errorMessage = e.message ?: "Error loading map data") }
+                }.collect { applyData ->
+                    _uiState.update(applyData)
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, errorMessage = e.message ?: "Unexpected error") }
@@ -75,6 +86,15 @@ class MapViewModel(
 
     fun togglePopulationDensityOverlay() {
         _uiState.update { it.copy(showPopulationDensity = !it.showPopulationDensity) }
+    }
+
+    fun toggleCrossingsOverlay() {
+        _uiState.update { it.copy(showWildlifeCrossings = !it.showWildlifeCrossings) }
+    }
+
+    fun toggleCollisionReportsOverlay() {
+        _uiState.update { it.copy(showCollisionReports = !it.showCollisionReports) }
+        scheduleCollisionRefresh(immediate = true)
     }
 
     fun toggleTaxonGroup(taxonGroup: String) {
@@ -114,6 +134,7 @@ class MapViewModel(
                 isFilterSheetVisible = false
             )
         }
+        scheduleCollisionRefresh()
     }
 
     fun selectFeature(feature: MapFeatureSelection?) {
@@ -135,27 +156,30 @@ class MapViewModel(
 
     fun panDirection(dLat: Double, dLon: Double) {
         _uiState.update { currentState ->
-            val panStep = 0.5 / 2.0.pow((currentState.zoomLevel - 6.0).coerceAtLeast(0.0))
-            val newLat = (currentState.mapCenter.latitude + dLat * panStep).coerceIn(-85.0, 85.0)
-            val newLon = (currentState.mapCenter.longitude + dLon * panStep).coerceIn(-180.0, 180.0)
-            currentState.copy(
-                mapCenter = GeoLocation(newLat, newLon),
-                panOffsetX = 0f,
-                panOffsetY = 0f
+            // Move a fixed share of the screen per click so the step feels the same at every zoom.
+            val newCenter = WebMercator.panBy(
+                center = currentState.mapCenter,
+                zoom = currentState.zoomLevel.toDouble(),
+                dx = -dLon * PAN_STEP_PX,
+                dy = dLat * PAN_STEP_PX
             )
+            currentState.copy(mapCenter = newCenter, panOffsetX = 0f, panOffsetY = 0f)
         }
+        scheduleCollisionRefresh()
     }
 
     fun zoomIn() {
         _uiState.update { currentState ->
-            currentState.copy(zoomLevel = (currentState.zoomLevel + 0.5f).coerceAtMost(18f))
+            currentState.copy(zoomLevel = (currentState.zoomLevel + 1f).coerceAtMost(WebMercator.MAX_ZOOM))
         }
+        scheduleCollisionRefresh()
     }
 
     fun zoomOut() {
         _uiState.update { currentState ->
-            currentState.copy(zoomLevel = (currentState.zoomLevel - 0.5f).coerceAtLeast(2f))
+            currentState.copy(zoomLevel = (currentState.zoomLevel - 1f).coerceAtLeast(WebMercator.MIN_ZOOM))
         }
+        scheduleCollisionRefresh()
     }
 
     fun resetView() {
@@ -168,16 +192,57 @@ class MapViewModel(
                 activePreset = null
             )
         }
+        scheduleCollisionRefresh()
     }
 
     fun updateMapCenterAndZoom(center: GeoLocation, zoom: Float) {
         _uiState.update { currentState ->
             currentState.copy(
                 mapCenter = center,
-                zoomLevel = zoom,
+                zoomLevel = zoom.coerceIn(WebMercator.MIN_ZOOM, WebMercator.MAX_ZOOM),
                 panOffsetX = 0f,
                 panOffsetY = 0f
             )
+        }
+        scheduleCollisionRefresh()
+    }
+
+    /**
+     * Collision reports are fetched for the area on screen, so they follow the viewport. Gestures
+     * fire many updates per second; the debounce waits for the map to settle before hitting the API.
+     */
+    private fun scheduleCollisionRefresh(immediate: Boolean = false) {
+        val state = _uiState.value
+        if (!state.showCollisionReports) {
+            collisionJob?.cancel()
+            return
+        }
+        val bounds = WebMercator.visibleBounds(
+            center = state.mapCenter,
+            zoom = state.zoomLevel.toDouble(),
+            widthPx = ASSUMED_VIEWPORT_WIDTH_PX,
+            heightPx = ASSUMED_VIEWPORT_HEIGHT_PX
+        )
+        val last = lastCollisionBounds
+        if (last != null && last.covers(bounds) && last.areaDeg2() <= bounds.areaDeg2() * MAX_REUSE_AREA_RATIO) {
+            // Still inside the last fetch and not zoomed in far enough to need denser local results.
+            return
+        }
+
+        collisionJob?.cancel()
+        collisionJob = viewModelScope.launch {
+            if (!immediate) delay(COLLISION_REFRESH_DEBOUNCE_MS)
+            _uiState.update { it.copy(collisionReportStatus = CollisionReportStatus.LOADING) }
+            val reports = collisionReportRepository.getCollisionReports(bounds)
+            if (reports == null) {
+                // Keep whatever was already on the map; it is still real data.
+                _uiState.update { it.copy(collisionReportStatus = CollisionReportStatus.UNAVAILABLE) }
+            } else {
+                lastCollisionBounds = bounds
+                _uiState.update {
+                    it.copy(collisionReports = reports, collisionReportStatus = CollisionReportStatus.LOADED)
+                }
+            }
         }
     }
 
@@ -190,10 +255,22 @@ class MapViewModel(
                 showCollisionHotspots = true,
                 showBarriers = true,
                 showPopulationDensity = true,
+                showWildlifeCrossings = true,
+                showCollisionReports = true,
                 activePreset = null
             )
         }
+        scheduleCollisionRefresh(immediate = true)
     }
 }
 
-private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+private const val PAN_STEP_PX = 160.0
+private const val ASSUMED_VIEWPORT_WIDTH_PX = 1600.0
+private const val ASSUMED_VIEWPORT_HEIGHT_PX = 1000.0
+private const val COLLISION_REFRESH_DEBOUNCE_MS = 700L
+private const val MAX_REUSE_AREA_RATIO = 16.0
+
+private fun BoundingBox.covers(other: BoundingBox): Boolean =
+    other.minLat >= minLat && other.maxLat <= maxLat && other.minLon >= minLon && other.maxLon <= maxLon
+
+private fun BoundingBox.areaDeg2(): Double = (maxLat - minLat) * (maxLon - minLon)

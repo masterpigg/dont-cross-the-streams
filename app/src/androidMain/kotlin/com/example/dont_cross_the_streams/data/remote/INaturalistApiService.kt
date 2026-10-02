@@ -4,6 +4,7 @@ import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 import retrofit2.http.GET
 import retrofit2.http.Query
+import retrofit2.http.Url
 
 @JsonClass(generateAdapter = true)
 data class INatResponse(
@@ -18,7 +19,8 @@ data class INatObservation(
     @Json(name = "location") val locationStr: String?,
     @Json(name = "taxon") val taxon: INatTaxon?,
     @Json(name = "observed_on") val observedOn: String?,
-    @Json(name = "photos") val photos: List<INatPhoto>? = emptyList()
+    @Json(name = "photos") val photos: List<INatPhoto>? = emptyList(),
+    @Json(name = "uri") val uri: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -41,4 +43,7 @@ interface INaturalistApiService {
         @Query("radius") radiusKm: Int = 50,
         @Query("per_page") perPage: Int = 30
     ): INatResponse
+
+    @GET
+    suspend fun getObservationsByUrl(@Url url: String): INatResponse
 }

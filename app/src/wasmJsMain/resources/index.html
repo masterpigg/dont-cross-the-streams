@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Don't Cross the Streams - Conflict Map</title>
 
-    <!-- Leaflet Web Map Styles & Script (HTTPS / Relative) -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
     <style>
         html, body {
             width: 100%;
@@ -19,81 +15,73 @@
             background-color: #121318;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
         }
-        #map-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            background-color: #121722;
-        }
         #ComposeTarget {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 1;
             display: block;
+            /* The map handles its own drag/pinch; don't let the browser pan or zoom the page. */
+            touch-action: none;
+            overscroll-behavior: none;
         }
     </style>
 </head>
 <body>
-    <div id="map-container"></div>
     <canvas id="ComposeTarget"></canvas>
 
     <script>
-        window.leafletMap = null;
-        window.activeTileLayer = null;
+        // Trackpad pinch arrives as ctrl+wheel. Without this the browser zooms the whole page
+        // instead of the map. Compose still receives the event and zooms the map itself.
+        window.addEventListener('wheel', function (event) {
+            if (event.ctrlKey) event.preventDefault();
+        }, { passive: false });
+        // Safari's proprietary pinch events, same reason.
+        ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (type) {
+            document.addEventListener(type, function (event) { event.preventDefault(); });
+        });
 
-        window.syncWebMap = function(lat, lon, zoom) {
-            try {
-                if (typeof L === 'undefined') return;
-                var container = document.getElementById('map-container');
-                if (!container) return;
-
-                if (!window.leafletMap) {
-                    window.leafletMap = L.map('map-container', {
-                        zoomControl: false,
-                        attributionControl: false,
-                        dragging: false,
-                        touchZoom: false,
-                        doubleClickZoom: false,
-                        scrollWheelZoom: false,
-                        boxZoom: false,
-                        keyboard: false
-                    }).setView([lat, lon], Math.round(zoom));
-
-                    // Primary Tile Source: CartoDB Voyager (HTTPS + CORS anonymous)
-                    window.activeTileLayer = L.tileLayer('https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', {
-                        maxZoom: 19,
-                        crossOrigin: 'anonymous',
-                        subdomains: 'abc',
-                        attribution: '&copy; OpenStreetMap &copy; CARTO'
-                    }).addTo(window.leafletMap);
-
-                    // Fallback Tile Source: Esri World Street Map (HTTPS + CORS)
-                    var esriLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-                        maxZoom: 19,
-                        crossOrigin: 'anonymous',
-                        attribution: 'Tiles &copy; Esri'
-                    });
-
-                    window.activeTileLayer.on('tileerror', function() {
-                        if (window.leafletMap && !window.switchedToEsri) {
-                            window.switchedToEsri = true;
-                            window.leafletMap.removeLayer(window.activeTileLayer);
-                            esriLayer.addTo(window.leafletMap);
-                        }
-                    });
-                } else {
-                    window.leafletMap.setView([lat, lon], Math.round(zoom), { animate: false });
+        // Multi-touch fix for Compose for Web 1.7: it only reads `changedTouches`, so when a second
+        // finger lands (or one finger lifts) the other finger is missing from the event and Compose
+        // drops it. Pinch-zoom then degrades into a one-finger pan. Re-dispatch touch events to the
+        // canvas so every event lists all fingers that are down.
+        (function () {
+            var relayed = new WeakSet();
+            var toArray = function (list) { return Array.prototype.slice.call(list); };
+            var relay = function (source, type, changed, touches) {
+                var event = new TouchEvent(type, {
+                    bubbles: true, cancelable: true, composed: true,
+                    touches: touches, targetTouches: touches, changedTouches: changed,
+                    ctrlKey: source.ctrlKey, shiftKey: source.shiftKey, altKey: source.altKey, metaKey: source.metaKey
+                });
+                relayed.add(event);
+                source.target.dispatchEvent(event);
+            };
+            var onTouch = function (event) {
+                if (relayed.has(event) || !event.target || event.target.id !== 'ComposeTarget') return;
+                var down = toArray(event.touches);
+                var changed = toArray(event.changedTouches);
+                try {
+                    if (event.type === 'touchstart' || event.type === 'touchmove') {
+                        if (down.length <= changed.length) return;
+                        relay(event, event.type, down, down);
+                    } else {
+                        if (down.length === 0) return;
+                        // End the whole gesture, then restart it with the fingers still down.
+                        relay(event, 'touchend', changed.concat(down), []);
+                        relay(event, 'touchstart', down, down);
+                    }
+                } catch (e) {
+                    return; // TouchEvent constructor unavailable: fall back to the original event.
                 }
-            } catch (err) {
-                console.warn('Leaflet map synchronization notice:', err);
-            }
-        };
+                event.stopImmediatePropagation();
+                event.preventDefault();
+            };
+            ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(function (type) {
+                window.addEventListener(type, onTouch, { capture: true, passive: false });
+            });
+        })();
     </script>
     <script type="application/javascript" src="app.js"></script>
 </body>

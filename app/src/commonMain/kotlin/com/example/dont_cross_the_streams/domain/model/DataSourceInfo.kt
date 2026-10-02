@@ -23,7 +23,11 @@ data class DataSourceInfo(
     val description: String,
     val baseURL: String,
     val keyEndpoints: List<String>,
+    // Best page to send a user to: the API/developer docs when that page is known to exist,
+    // otherwise the provider's homepage. Never a raw endpoint root, which is usually a 404.
     val documentationUrl: String,
+    // Provider's public landing page; the fallback whenever an API page is missing.
+    val homepageUrl: String,
     val authType: AuthType,
     val keyUtility: String,
     val isLiveApiAvailable: Boolean = true

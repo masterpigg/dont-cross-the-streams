@@ -3,9 +3,12 @@ package com.example.dont_cross_the_streams.data.repository
 import com.example.dont_cross_the_streams.data.remote.NetworkClient
 import com.example.dont_cross_the_streams.domain.model.BarrierFeature
 import com.example.dont_cross_the_streams.domain.model.BarrierType
+import com.example.dont_cross_the_streams.domain.model.BoundingBox
+import com.example.dont_cross_the_streams.domain.model.CollisionReport
 import com.example.dont_cross_the_streams.domain.model.GeoLocation
 import com.example.dont_cross_the_streams.domain.model.ImpactLevel
 import com.example.dont_cross_the_streams.domain.model.WildlifeOccurrence
+import kotlinx.coroutines.CancellationException
 
 actual suspend fun fetchLiveOverpassBarriersApi(bboxQuery: String): List<BarrierFeature> {
     return try {
@@ -121,5 +124,33 @@ actual suspend fun fetchLiveObservationsFromINaturalistApi(
         } ?: emptyList()
     } catch (e: Exception) {
         emptyList()
+    }
+}
+
+actual suspend fun fetchLiveRoadkillReportsApi(bounds: BoundingBox, maxResults: Int): List<CollisionReport>? {
+    return try {
+        val response = NetworkClient.iNaturalistApiService.getObservationsByUrl(
+            buildINaturalistRoadkillUrl(bounds, maxResults)
+        )
+        response.results?.mapNotNull { obs ->
+            val locParts = obs.locationStr?.split(",")
+            val lat = locParts?.getOrNull(0)?.trim()?.toDoubleOrNull()
+            val lon = locParts?.getOrNull(1)?.trim()?.toDoubleOrNull()
+            if (lat == null || lon == null || obs.id == null) return@mapNotNull null
+            CollisionReport(
+                id = "inat_dead_${obs.id}",
+                species = obs.taxon?.name ?: obs.speciesGuess ?: "Unidentified",
+                commonName = obs.taxon?.preferredCommonName ?: obs.speciesGuess,
+                taxonGroup = iconicTaxonToGroup(obs.taxon?.iconicTaxonName),
+                location = GeoLocation(lat, lon),
+                observedOn = obs.observedOn,
+                source = INATURALIST_ROADKILL_SOURCE,
+                observationUrl = obs.uri
+            )
+        } ?: emptyList()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
     }
 }
