@@ -4,8 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.example.dont_cross_the_streams.domain.model.BarrierFeature
 import com.example.dont_cross_the_streams.domain.model.CollisionHotspot
+import com.example.dont_cross_the_streams.domain.model.CollisionReport
 import com.example.dont_cross_the_streams.domain.model.GeoLocation
 import com.example.dont_cross_the_streams.domain.model.PopulationDensityZone
+import com.example.dont_cross_the_streams.domain.model.WildlifeCrossing
 import com.example.dont_cross_the_streams.domain.model.WildlifeOccurrence
 
 @Composable
@@ -27,5 +29,7 @@ expect fun InteractiveConflictMap(
     modifier: Modifier = Modifier,
     onPanDirection: (dLat: Double, dLon: Double) -> Unit = { _, _ -> },
     onSelectPreset: (ConflictRegionPreset) -> Unit = {},
-    onMapCenterAndZoomChanged: (GeoLocation, Float) -> Unit = { _, _ -> }
+    onMapCenterAndZoomChanged: (GeoLocation, Float) -> Unit = { _, _ -> },
+    wildlifeCrossings: List<WildlifeCrossing> = emptyList(),
+    collisionReports: List<CollisionReport> = emptyList()
 )

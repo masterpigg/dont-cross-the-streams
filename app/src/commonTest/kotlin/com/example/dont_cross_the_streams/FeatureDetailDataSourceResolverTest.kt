@@ -1,5 +1,6 @@
 package com.example.dont_cross_the_streams
 
+import com.example.dont_cross_the_streams.data.datasource.MockDatasetTransparencyDataSource
 import com.example.dont_cross_the_streams.ui.main.MainTab
 import com.example.dont_cross_the_streams.ui.main.MainViewModel
 import com.example.dont_cross_the_streams.ui.map.resolveDataSourceUrl
@@ -7,6 +8,7 @@ import com.example.dont_cross_the_streams.ui.map.resolveTransparencyHubDataSourc
 import com.example.dont_cross_the_streams.ui.map.splitSourceNames
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class FeatureDetailDataSourceResolverTest {
@@ -17,19 +19,55 @@ class FeatureDetailDataSourceResolverTest {
         assertEquals("https://api.inaturalist.org/v1/docs/", resolveDataSourceUrl("iNaturalist"))
         assertEquals("https://github.com/movebank/movebank-api-doc", resolveDataSourceUrl("Movebank GPS Tracking"))
         assertEquals("https://documenter.getpostman.com/view/664302/S1ENwy59", resolveDataSourceUrl("eBird"))
-        assertEquals("https://overpass-turbo.eu/", resolveDataSourceUrl("OpenStreetMap Overpass"))
-        assertEquals("https://nid.sec.usace.army.mil/api/developer", resolveDataSourceUrl("USACE NID"))
+        assertEquals("https://wiki.openstreetmap.org/wiki/Overpass_API", resolveDataSourceUrl("OpenStreetMap Overpass"))
+        assertEquals("https://nid.sec.usace.army.mil/api/developer/static/index.html", resolveDataSourceUrl("USACE NID"))
         assertEquals("https://www.census.gov/data/developers/guidance/api-user-guide.html", resolveDataSourceUrl("US Census Bureau 2020"))
-        assertEquals("https://data-modot.opendata.arcgis.com/", resolveDataSourceUrl("MoDOT Safety GIS"))
-        assertEquals("https://mdc.mo.gov/", resolveDataSourceUrl("MDC Wildlife Census"))
-        assertEquals("https://clearinghouse.isgs.illinois.gov/", resolveDataSourceUrl("Illinois DNR"))
-        assertEquals("https://geodataservices.wdfw.wa.gov/arcgis/rest/services", resolveDataSourceUrl("WDFW Salmon Passage API"))
-        assertEquals("https://qa-wildlife.faa.gov/api/swagger/v1/swagger.json", resolveDataSourceUrl("FAA NWSD"))
         assertEquals("https://crashviewer.nhtsa.dot.gov/CrashAPI", resolveDataSourceUrl("NHTSA FARS"))
-        assertEquals("https://data-usdot.opendata.arcgis.com/", resolveDataSourceUrl("USDOT FHWA Wildlife Crossings Pilot Program (WCPP)"))
+        assertEquals("https://explorer.natureserve.org/api-docs/", resolveDataSourceUrl("NatureServe"))
+        assertEquals("https://ecos.fws.gov/ecp/services", resolveDataSourceUrl("USFWS IPaC"))
+        assertEquals("https://highways.dot.gov/federal-lands/programs/wildlife-crossings", resolveDataSourceUrl("USDOT FHWA Wildlife Crossings Pilot Program (WCPP)"))
         assertEquals("https://gisdata-caltrans.opendata.arcgis.com/", resolveDataSourceUrl("Caltrans Wildlife Crossing & Mitigation GIS API"))
         assertEquals("https://data-cdot.opendata.arcgis.com/", resolveDataSourceUrl("CDOT Wildlife Mitigations & Overpasses API"))
         assertEquals("https://gisdata-wsdot.opendata.arcgis.com/", resolveDataSourceUrl("WSDOT Fish Passage Barrier & Wildlife Crossing API"))
+        assertEquals("https://geodataservices.wdfw.wa.gov/arcgis/rest/services", resolveDataSourceUrl("WDFW Salmon Passage API"))
+    }
+
+    @Test
+    fun resolveDataSourceUrl_fallsBackToProviderHomepageWhenNoApiPageExists() {
+        assertEquals("https://www.modot.org/", resolveDataSourceUrl("MoDOT Safety GIS"))
+        assertEquals("https://mdc.mo.gov/", resolveDataSourceUrl("MDC Wildlife Census"))
+        assertEquals("https://wildlife.faa.gov/home", resolveDataSourceUrl("FAA NWSD"))
+        assertEquals("https://www.nwd.usace.army.mil/", resolveDataSourceUrl("USACE NWD"))
+        assertEquals("https://idot.illinois.gov/", resolveDataSourceUrl("IDOT Safety Data"))
+        assertEquals("https://www.codot.gov/", resolveDataSourceUrl("Colorado DOT WVC"))
+        assertEquals("https://www.ncdot.gov/", resolveDataSourceUrl("North Carolina DOT"))
+        assertEquals("https://www.nps.gov/", resolveDataSourceUrl("National Park Service"))
+        assertEquals("https://www.fisheries.noaa.gov/", resolveDataSourceUrl("NOAA Fisheries"))
+    }
+
+    @Test
+    fun resolveDataSourceUrl_hubSourcesUseTheHubsCuratedLink() {
+        MockDatasetTransparencyDataSource.dataSources.forEach { info ->
+            assertEquals(info.documentationUrl, resolveDataSourceUrl(info.name), "Link mismatch for ${info.id}")
+        }
+    }
+
+    @Test
+    fun dataSources_neverLinkToRawApiRoots() {
+        MockDatasetTransparencyDataSource.dataSources.forEach { info ->
+            assertTrue(info.homepageUrl.startsWith("https://"), "Bad homepage for ${info.id}")
+            assertTrue(info.documentationUrl.startsWith("https://"), "Bad docs link for ${info.id}")
+            assertFalse(info.documentationUrl.contains("qa-"), "QA/staging link for ${info.id}")
+            assertFalse(info.documentationUrl.endsWith(".json"), "Raw JSON link for ${info.id}")
+        }
+    }
+
+    @Test
+    fun resolveDataSourceUrl_unknownSourceIsUrlEncodedSearch() {
+        assertEquals(
+            "https://www.google.com/search?q=Some+Local+Survey+%26+Co",
+            resolveDataSourceUrl("Some Local Survey & Co")
+        )
     }
 
     @Test

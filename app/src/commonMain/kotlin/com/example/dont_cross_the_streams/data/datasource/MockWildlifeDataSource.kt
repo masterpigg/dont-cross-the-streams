@@ -602,7 +602,7 @@ object MockWildlifeDataSource {
         ),
         CollisionHotspot(
             id = "hotspot_005",
-            location = GeoLocation(34.134, -118.321),
+            location = GeoLocation(34.138, -118.725),
             incidentCount = 12,
             primarySpeciesAffected = "Mountain Lion & Mule Deer",
             severity = CollisionSeverity.MODERATE,

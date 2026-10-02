@@ -49,6 +49,8 @@ fun ConflictMapScreen(
         onToggleHotspots = viewModel::toggleHotspotsOverlay,
         onToggleBarriers = viewModel::toggleBarriersOverlay,
         onTogglePopulation = viewModel::togglePopulationDensityOverlay,
+        onToggleCrossings = viewModel::toggleCrossingsOverlay,
+        onToggleCollisionReports = viewModel::toggleCollisionReportsOverlay,
         onToggleTaxonGroup = viewModel::toggleTaxonGroup,
         onToggleBarrierType = viewModel::toggleBarrierType,
         onSelectPreset = viewModel::applyPreset,
@@ -75,6 +77,8 @@ fun ConflictMapScreenContent(
     onToggleHotspots: () -> Unit = {},
     onToggleBarriers: () -> Unit = {},
     onTogglePopulation: () -> Unit = {},
+    onToggleCrossings: () -> Unit = {},
+    onToggleCollisionReports: () -> Unit = {},
     onToggleTaxonGroup: (String) -> Unit = {},
     onToggleBarrierType: (BarrierType) -> Unit = {},
     onSelectPreset: (ConflictRegionPreset) -> Unit = {},
@@ -146,6 +150,8 @@ fun ConflictMapScreenContent(
                 collisionHotspots = uiState.filteredCollisionHotspots,
                 barriers = uiState.filteredBarriers,
                 populationZones = uiState.filteredPopulationZones,
+                wildlifeCrossings = uiState.filteredWildlifeCrossings,
+                collisionReports = uiState.filteredCollisionReports,
                 selectedFeature = uiState.selectedFeature,
                 onPan = onPan,
                 onPanDirection = onPanDirection,
@@ -180,10 +186,16 @@ fun ConflictMapScreenContent(
                 showHotspots = uiState.showCollisionHotspots,
                 showBarriers = uiState.showBarriers,
                 showPopulation = uiState.showPopulationDensity,
+                showCrossings = uiState.showWildlifeCrossings,
+                showCollisionReports = uiState.showCollisionReports,
+                collisionReportCount = uiState.collisionReports.size,
+                collisionReportStatus = uiState.collisionReportStatus,
                 onToggleWildlife = onToggleWildlife,
                 onToggleHotspots = onToggleHotspots,
                 onToggleBarriers = onToggleBarriers,
                 onTogglePopulation = onTogglePopulation,
+                onToggleCrossings = onToggleCrossings,
+                onToggleCollisionReports = onToggleCollisionReports,
                 onOpenFilterSheet = { onShowFilterSheet(true) },
                 activePresetName = uiState.activePreset?.title,
                 activeFilterCount = activeFilterCount,
@@ -208,7 +220,10 @@ fun ConflictMapScreenContent(
             FeatureDetailBottomSheet(
                 feature = selected,
                 onDismiss = { onFeatureSelected(null) },
-                onNavigateToTransparencyHub = onNavigateToTransparencyHub
+                onNavigateToTransparencyHub = onNavigateToTransparencyHub,
+                crossings = uiState.allWildlifeCrossings,
+                hotspots = uiState.allCollisionHotspots,
+                collisionReports = uiState.collisionReports
             )
         }
     }

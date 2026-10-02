@@ -17,7 +17,8 @@ object MockDatasetTransparencyDataSource {
                 "features/wildlife-crossings",
                 "rest/services/wcpp"
             ),
-            documentationUrl = "https://data-usdot.opendata.arcgis.com/",
+            documentationUrl = "https://highways.dot.gov/federal-lands/programs/wildlife-crossings",
+            homepageUrl = "https://highways.dot.gov/",
             authType = AuthType.NONE_PUBLIC,
             keyUtility = "Locations of federally funded wildlife overpasses, underpasses, directional fencing, and eco-culverts under the Bipartisan Infrastructure Law."
         ),
@@ -33,6 +34,7 @@ object MockDatasetTransparencyDataSource {
                 "rest/services/caltrans_wildlife"
             ),
             documentationUrl = "https://gisdata-caltrans.opendata.arcgis.com/",
+            homepageUrl = "https://dot.ca.gov/",
             authType = AuthType.NONE_PUBLIC,
             keyUtility = "State wildlife crossings including Wallis Annenberg Wildlife Crossing at Liberty Canyon and CA-17 cougar underpasses."
         ),
@@ -48,6 +50,7 @@ object MockDatasetTransparencyDataSource {
                 "rest/services/cdot_wildlife"
             ),
             documentationUrl = "https://data-cdot.opendata.arcgis.com/",
+            homepageUrl = "https://www.codot.gov/",
             authType = AuthType.NONE_PUBLIC,
             keyUtility = "Colorado highway overpasses (I-70 Vail Pass, SH-9 Kremmling) and wildlife collision reduction structures."
         ),
@@ -63,6 +66,7 @@ object MockDatasetTransparencyDataSource {
                 "rest/services/wsdot_fish_wildlife"
             ),
             documentationUrl = "https://gisdata-wsdot.opendata.arcgis.com/",
+            homepageUrl = "https://wsdot.wa.gov/",
             authType = AuthType.NONE_PUBLIC,
             keyUtility = "Washington state fish passage culvert removals, salmon ladders, and I-90 Snoqualmie Pass overpass structures."
         ),
@@ -78,6 +82,7 @@ object MockDatasetTransparencyDataSource {
                 "aquatic/fish-count"
             ),
             documentationUrl = "https://mdc.mo.gov/",
+            homepageUrl = "https://mdc.mo.gov/",
             authType = AuthType.NONE_PUBLIC,
             keyUtility = "Authoritative Missouri state species occurrence, elk tracking, and black bear range monitoring."
         ),
@@ -92,7 +97,8 @@ object MockDatasetTransparencyDataSource {
                 "carcass/milepost",
                 "corridors/hotspots"
             ),
-            documentationUrl = "https://data-modot.opendata.arcgis.com/",
+            documentationUrl = "https://www.modot.org/",
+            homepageUrl = "https://www.modot.org/",
             authType = AuthType.DATASET_DOWNLOAD,
             keyUtility = "Pinpoint highway milepost collision hotspots across Missouri highway networks."
         ),
@@ -108,6 +114,7 @@ object MockDatasetTransparencyDataSource {
                 "occurrence/counts"
             ),
             documentationUrl = "https://techdocs.gbif.org/en/openapi/",
+            homepageUrl = "https://www.gbif.org/",
             authType = AuthType.NONE_PUBLIC,
             keyUtility = "Global geo-referenced species occurrence records and taxonomic verification across global research institutions."
         ),
@@ -123,6 +130,7 @@ object MockDatasetTransparencyDataSource {
                 "json?entity_type=event"
             ),
             documentationUrl = "https://github.com/movebank/movebank-api-doc",
+            homepageUrl = "https://www.movebank.org/",
             authType = AuthType.NONE_PUBLIC,
             keyUtility = "High-precision GPS telemetry collar and sensor movement pathways for migratory mammals and birds."
         ),
@@ -138,6 +146,7 @@ object MockDatasetTransparencyDataSource {
                 "ref/taxonomy/ebird"
             ),
             documentationUrl = "https://documenter.getpostman.com/view/664302/S1ENwy59",
+            homepageUrl = "https://ebird.org/",
             authType = AuthType.API_KEY,
             keyUtility = "Real-time avian migration density, recent bird sightings, and species distribution along migratory flyways."
         ),
@@ -153,6 +162,7 @@ object MockDatasetTransparencyDataSource {
                 "observations/histogram"
             ),
             documentationUrl = "https://api.inaturalist.org/v1/docs/",
+            homepageUrl = "https://www.inaturalist.org/",
             authType = AuthType.NONE_PUBLIC,
             keyUtility = "Geo-tagged photo evidence and crowd-sourced research-grade observations for all animal and plant taxa."
         ),
@@ -167,7 +177,8 @@ object MockDatasetTransparencyDataSource {
                 "crithat/geojson",
                 "project/assess"
             ),
-            documentationUrl = "https://ecos.fws.gov/ecp/pullwebservices",
+            documentationUrl = "https://ecos.fws.gov/ecp/services",
+            homepageUrl = "https://ipac.ecosphere.fws.gov/",
             authType = AuthType.NONE_PUBLIC,
             keyUtility = "Identification of federally listed threatened and endangered species habitats intersecting infrastructure projects."
         ),
@@ -183,6 +194,7 @@ object MockDatasetTransparencyDataSource {
                 "landcover/wfs"
             ),
             documentationUrl = "https://www.sciencebase.gov/catalog/",
+            homepageUrl = "https://www.usgs.gov/programs/gap-analysis-project",
             authType = AuthType.DATASET_DOWNLOAD,
             keyUtility = "High-resolution habitat suitability models and protected land status for ecological connectivity analysis."
         ),
@@ -197,7 +209,8 @@ object MockDatasetTransparencyDataSource {
                 "taxon/guid/{guid}",
                 "location/species"
             ),
-            documentationUrl = "https://explorer.natureserve.org/api/docs/",
+            documentationUrl = "https://explorer.natureserve.org/api-docs/",
+            homepageUrl = "https://explorer.natureserve.org/",
             authType = AuthType.NONE_PUBLIC,
             keyUtility = "Global and state conservation risk ranks (Imperiled, Endangered, Vulnerable) for risk matrix weighting."
         ),
@@ -212,7 +225,8 @@ object MockDatasetTransparencyDataSource {
                 "api/strikes/export/csv",
                 "api/summary/species"
             ),
-            documentationUrl = "https://qa-wildlife.faa.gov/api/swagger/v1/swagger.json",
+            documentationUrl = "https://wildlife.faa.gov/home",
+            homepageUrl = "https://wildlife.faa.gov/home",
             authType = AuthType.DATASET_DOWNLOAD,
             keyUtility = "Avian and bat strike hazard records surrounding airports and low-altitude flight corridors."
         ),
@@ -227,7 +241,8 @@ object MockDatasetTransparencyDataSource {
                 "hotspots/geojson",
                 "carcass/summary"
             ),
-            documentationUrl = "https://data-modot.opendata.arcgis.com/",
+            documentationUrl = "https://highways.dot.gov/federal-lands/programs/wildlife-crossings",
+            homepageUrl = "https://highways.dot.gov/",
             authType = AuthType.DATASET_DOWNLOAD,
             keyUtility = "Highway wildlife casualty counts, localized milepost collision hotspots, and fencing prioritization metrics."
         ),
@@ -243,6 +258,7 @@ object MockDatasetTransparencyDataSource {
                 "crashes/GetVehicleDetails"
             ),
             documentationUrl = "https://crashviewer.nhtsa.dot.gov/CrashAPI",
+            homepageUrl = "https://www.nhtsa.gov/",
             authType = AuthType.NONE_PUBLIC,
             keyUtility = "Severe and fatal animal-vehicle accident data for corridor safety matrix calculations."
         ),
@@ -257,6 +273,7 @@ object MockDatasetTransparencyDataSource {
                 "geo/tiger"
             ),
             documentationUrl = "https://www.census.gov/data/developers/guidance/api-user-guide.html",
+            homepageUrl = "https://www.census.gov/",
             authType = AuthType.NONE_PUBLIC,
             keyUtility = "Grid-level human population density calculation for wildlife displacement risk mapping."
         ),
@@ -270,7 +287,8 @@ object MockDatasetTransparencyDataSource {
                 "wms/sedac",
                 "api/grid/value"
             ),
-            documentationUrl = "https://sedac.ciesin.columbia.edu/",
+            documentationUrl = "https://www.earthdata.nasa.gov/data/catalog/sedac-ciesin-sedac-lwp2-hf-geog-2.0",
+            homepageUrl = "https://www.earthdata.nasa.gov/",
             authType = AuthType.DATASET_DOWNLOAD,
             keyUtility = "Global Human Footprint Index (0-100) determining habitat fragmentation and urban encroachment levels."
         ),
@@ -285,7 +303,8 @@ object MockDatasetTransparencyDataSource {
                 "dams/summary",
                 "dams/{nidId}"
             ),
-            documentationUrl = "https://nid.sec.usace.army.mil/api/developer",
+            documentationUrl = "https://nid.sec.usace.army.mil/api/developer/static/index.html",
+            homepageUrl = "https://nid.sec.usace.army.mil/",
             authType = AuthType.NONE_PUBLIC,
             keyUtility = "Hydroelectric and irrigation dam barrier locations restricting aquatic species movement and river connectivity."
         ),
@@ -298,7 +317,8 @@ object MockDatasetTransparencyDataSource {
             keyEndpoints = listOf(
                 "interpreter?data=[out:json];way[highway=motorway];out geom;"
             ),
-            documentationUrl = "https://overpass-turbo.eu/",
+            documentationUrl = "https://wiki.openstreetmap.org/wiki/Overpass_API",
+            homepageUrl = "https://overpass-api.de/",
             authType = AuthType.NONE_PUBLIC,
             keyUtility = "Real-time vector geographic boundaries for linear barrier features including fences, highways, and railways."
         ),
@@ -314,6 +334,7 @@ object MockDatasetTransparencyDataSource {
                 "corridors/crossings"
             ),
             documentationUrl = "https://clearinghouse.isgs.illinois.gov/",
+            homepageUrl = "https://dnr.illinois.gov/",
             authType = AuthType.NONE_PUBLIC,
             keyUtility = "Authoritative Illinois reptile, amphibian, and game species occurrence datasets."
         ),
@@ -329,6 +350,7 @@ object MockDatasetTransparencyDataSource {
                 "wildlife/collisions"
             ),
             documentationUrl = "https://geodataservices.wdfw.wa.gov/arcgis/rest/services",
+            homepageUrl = "https://wdfw.wa.gov/",
             authType = AuthType.NONE_PUBLIC,
             keyUtility = "Statewide Washington salmon escapement telemetry, fish ladders, and ungulate crossing data."
         ),
@@ -343,7 +365,8 @@ object MockDatasetTransparencyDataSource {
                 "ladders/status",
                 "dams/telemetry"
             ),
-            documentationUrl = "https://www.nwd.usace.army.mil/api/salmon/",
+            documentationUrl = "https://www.nwd.usace.army.mil/",
+            homepageUrl = "https://www.nwd.usace.army.mil/",
             authType = AuthType.NONE_PUBLIC,
             keyUtility = "Real-time daily counts for Chinook, Sockeye, and Steelhead migrating through Columbia River and Ballard Locks fish ladders."
         )

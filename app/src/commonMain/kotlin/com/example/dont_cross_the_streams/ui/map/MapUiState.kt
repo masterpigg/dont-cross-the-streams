@@ -3,9 +3,13 @@ package com.example.dont_cross_the_streams.ui.map
 import com.example.dont_cross_the_streams.domain.model.BarrierFeature
 import com.example.dont_cross_the_streams.domain.model.BarrierType
 import com.example.dont_cross_the_streams.domain.model.CollisionHotspot
+import com.example.dont_cross_the_streams.domain.model.CollisionReport
 import com.example.dont_cross_the_streams.domain.model.GeoLocation
 import com.example.dont_cross_the_streams.domain.model.PopulationDensityZone
+import com.example.dont_cross_the_streams.domain.model.WildlifeCrossing
 import com.example.dont_cross_the_streams.domain.model.WildlifeOccurrence
+
+enum class CollisionReportStatus { IDLE, LOADING, LOADED, UNAVAILABLE }
 
 data class MapUiState(
     val mapCenter: GeoLocation = GeoLocation(39.8283, -98.5795),
@@ -17,6 +21,8 @@ data class MapUiState(
     val showCollisionHotspots: Boolean = true,
     val showBarriers: Boolean = true,
     val showPopulationDensity: Boolean = true,
+    val showWildlifeCrossings: Boolean = true,
+    val showCollisionReports: Boolean = true,
 
     val selectedTaxonGroups: Set<String> = setOf("Mammals", "Birds", "Reptiles", "Fish", "Amphibians"),
     val selectedBarrierTypes: Set<BarrierType> = BarrierType.entries.toSet(),
@@ -26,6 +32,9 @@ data class MapUiState(
     val allCollisionHotspots: List<CollisionHotspot> = emptyList(),
     val allBarriers: List<BarrierFeature> = emptyList(),
     val allPopulationZones: List<PopulationDensityZone> = emptyList(),
+    val allWildlifeCrossings: List<WildlifeCrossing> = emptyList(),
+    val collisionReports: List<CollisionReport> = emptyList(),
+    val collisionReportStatus: CollisionReportStatus = CollisionReportStatus.IDLE,
 
     val selectedFeature: MapFeatureSelection? = null,
     val isFilterSheetVisible: Boolean = false,
@@ -56,4 +65,10 @@ data class MapUiState(
 
     val filteredPopulationZones: List<PopulationDensityZone>
         get() = if (!showPopulationDensity) emptyList() else allPopulationZones
+
+    val filteredWildlifeCrossings: List<WildlifeCrossing>
+        get() = if (!showWildlifeCrossings) emptyList() else allWildlifeCrossings
+
+    val filteredCollisionReports: List<CollisionReport>
+        get() = if (!showCollisionReports) emptyList() else collisionReports
 }

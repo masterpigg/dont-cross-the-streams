@@ -497,6 +497,9 @@ private fun DataSourceDetailPane(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
+                    // documentationUrl is curated to always resolve (API docs when they exist, else the
+                    // provider homepage). Raw base endpoints are not linked: their roots are usually 404s.
+                    val hasSeparateApiDocs = dataSource.documentationUrl != dataSource.homepageUrl
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier.fillMaxWidth()
@@ -512,21 +515,23 @@ private fun DataSourceDetailPane(
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Live API Docs", maxLines = 1)
+                            Text(if (hasSeparateApiDocs) "API Docs" else "Provider Website", maxLines = 1)
                         }
 
-                        OutlinedButton(
-                            onClick = { openUrl(dataSource.baseURL) },
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Launch,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Base Endpoint", maxLines = 1)
+                        if (hasSeparateApiDocs) {
+                            OutlinedButton(
+                                onClick = { openUrl(dataSource.homepageUrl) },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Launch,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Homepage", maxLines = 1)
+                            }
                         }
                     }
                 }
