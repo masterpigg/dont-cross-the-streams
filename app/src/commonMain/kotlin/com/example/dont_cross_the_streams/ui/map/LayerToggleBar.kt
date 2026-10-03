@@ -55,8 +55,8 @@ fun LayerToggleBar(
     activeFilterCount: Int = 0,
     showCrossings: Boolean = true,
     showCollisionReports: Boolean = true,
-    collisionReportCount: Int = 0,
-    collisionReportStatus: CollisionReportStatus = CollisionReportStatus.IDLE,
+    layerSummary: (MapLayer) -> String = { "" },
+    hotspotCount: Int = 0,
     onToggleCrossings: () -> Unit = {},
     onToggleCollisionReports: () -> Unit = {}
 ) {
@@ -146,7 +146,7 @@ fun LayerToggleBar(
                 LayerChip(
                     selected = showWildlife,
                     onClick = onToggleWildlife,
-                    label = "Wildlife",
+                    label = "Wildlife".withSummary(showWildlife, layerSummary(MapLayer.WILDLIFE)),
                     icon = Icons.Rounded.Pets,
                     activeColor = Color(0xFFFFB300)
                 )
@@ -154,7 +154,9 @@ fun LayerToggleBar(
                 LayerChip(
                     selected = showHotspots,
                     onClick = onToggleHotspots,
-                    label = "Hotspots",
+                    label = "Hotspots".withSummary(showHotspots, layerSummary(MapLayer.COLLISIONS).let { summary ->
+                        if (summary.firstOrNull()?.isDigit() == true) "$hotspotCount" else summary
+                    }),
                     icon = Icons.Rounded.Warning,
                     activeColor = Color(0xFFFF3D00)
                 )
@@ -162,13 +164,7 @@ fun LayerToggleBar(
                 LayerChip(
                     selected = showCollisionReports,
                     onClick = onToggleCollisionReports,
-                    label = when {
-                        !showCollisionReports -> "Collision Reports"
-                        collisionReportStatus == CollisionReportStatus.LOADING -> "Collision Reports (loading…)"
-                        collisionReportStatus == CollisionReportStatus.UNAVAILABLE && collisionReportCount == 0 ->
-                            "Collision Reports (offline)"
-                        else -> "Collision Reports ($collisionReportCount)"
-                    },
+                    label = "Collision Reports".withSummary(showCollisionReports, layerSummary(MapLayer.COLLISIONS)),
                     icon = Icons.Rounded.CarCrash,
                     activeColor = CollisionReportColor
                 )
@@ -176,7 +172,7 @@ fun LayerToggleBar(
                 LayerChip(
                     selected = showCrossings,
                     onClick = onToggleCrossings,
-                    label = "Wildlife Crossings",
+                    label = "Crossings & Culverts".withSummary(showCrossings, layerSummary(MapLayer.STRUCTURES)),
                     icon = Icons.Rounded.Forest,
                     activeColor = WildlifeCrossingColor
                 )
@@ -184,7 +180,7 @@ fun LayerToggleBar(
                 LayerChip(
                     selected = showBarriers,
                     onClick = onToggleBarriers,
-                    label = "Barriers",
+                    label = "Barriers".withSummary(showBarriers, layerSummary(MapLayer.INFRASTRUCTURE)),
                     icon = Icons.Rounded.Route,
                     activeColor = Color(0xFF29B6F6)
                 )
@@ -192,7 +188,7 @@ fun LayerToggleBar(
                 LayerChip(
                     selected = showPopulation,
                     onClick = onTogglePopulation,
-                    label = "Human Density",
+                    label = "Population".withSummary(showPopulation, layerSummary(MapLayer.POPULATION)),
                     icon = Icons.Rounded.Groups,
                     activeColor = Color(0xFFAB47BC)
                 )
@@ -257,3 +253,7 @@ private fun LayerChip(
 // Shared by every platform's map renderer so the legend chips match the markers.
 val WildlifeCrossingColor = Color(0xFF00C853)
 val CollisionReportColor = Color(0xFFFF1744)
+
+private fun String.withSummary(shown: Boolean, summary: String): String =
+    if (shown && summary.isNotBlank()) "$this ($summary)" else this
+

@@ -54,6 +54,9 @@ fun FilterBottomSheet(
     selectedTaxonGroups: Set<String>,
     selectedBarrierTypes: Set<BarrierType>,
     activePreset: ConflictRegionPreset?,
+    selectedMonths: Set<Int> = emptySet(),
+    onToggleMonth: (Int) -> Unit = {},
+    onClearMonths: () -> Unit = {},
     onToggleTaxonGroup: (String) -> Unit,
     onToggleBarrierType: (BarrierType) -> Unit,
     onSelectPreset: (ConflictRegionPreset) -> Unit,
@@ -181,7 +184,6 @@ fun FilterBottomSheet(
                 "Mammals" to Icons.Rounded.Pets,
                 "Birds" to Icons.Rounded.Pets,
                 "Reptiles" to Icons.Rounded.Pets,
-                "Fish" to Icons.Rounded.Water,
                 "Amphibians" to Icons.Rounded.Water
             )
 
@@ -219,6 +221,42 @@ fun FilterBottomSheet(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
+                text = "SEASON (MONTH OBSERVED)",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = "Applies to sightings, collision reports and the hotspots computed from them. " +
+                    "None selected = all months.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                FilterChip(
+                    selected = selectedMonths.isEmpty(),
+                    onClick = onClearMonths,
+                    label = { Text("All") },
+                    shape = RoundedCornerShape(12.dp)
+                )
+                MONTH_LABELS.forEachIndexed { index, label ->
+                    FilterChip(
+                        selected = (index + 1) in selectedMonths,
+                        onClick = { onToggleMonth(index + 1) },
+                        label = { Text(label) },
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
                 text = "LINEAR INFRASTRUCTURE BARRIER TYPES",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
@@ -229,10 +267,8 @@ fun FilterBottomSheet(
             val barrierOptions = listOf(
                 BarrierType.HIGHWAY to ("Highways & Interstates" to Icons.Rounded.DirectionsCar),
                 BarrierType.RAILWAY to ("Freight & Passenger Railways" to Icons.Rounded.Train),
-                BarrierType.DAM to ("River Dams & Impoundments" to Icons.Rounded.Water),
-                BarrierType.FENCE to ("Range & Boundary Fences" to Icons.Rounded.Fence),
-                BarrierType.CANAL to ("Canals & Aqueducts" to Icons.Rounded.Water),
-                BarrierType.URBAN_WALL to ("Urban Walls & Soundwalls" to Icons.Rounded.Route)
+                BarrierType.DAM to ("Dams & Weirs" to Icons.Rounded.Water),
+                BarrierType.CANAL to ("Canals" to Icons.Rounded.Water)
             )
 
             FlowRow(

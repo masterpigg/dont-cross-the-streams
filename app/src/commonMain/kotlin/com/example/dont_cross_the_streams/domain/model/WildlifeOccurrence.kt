@@ -10,5 +10,9 @@ data class WildlifeOccurrence(
     val timestamp: Long,
     val source: String,
     val imageUrl: String? = null,
-    val conservationStatus: String? = null
+    val conservationStatus: String? = null,
+    /** ISO date (yyyy-MM-dd...) the animal was observed, as reported by the source. */
+    val observedOn: String? = null,
+    /** Link to the original record (iNaturalist observation / GBIF occurrence page). */
+    val recordUrl: String? = null
 )

@@ -48,7 +48,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.dont_cross_the_streams.data.datasource.MockDatasetTransparencyDataSource
+import com.example.dont_cross_the_streams.data.datasource.DataSourceCatalog
+import com.example.dont_cross_the_streams.data.remote.encodeUrlParam
+import com.example.dont_cross_the_streams.domain.model.CrossingKind
 import com.example.dont_cross_the_streams.domain.model.CollisionHotspot
 import com.example.dont_cross_the_streams.domain.model.CollisionReport
 import com.example.dont_cross_the_streams.domain.model.GeoLocation
@@ -61,91 +63,19 @@ fun resolveDataSourceUrl(source: String): String {
     if (trimmed.startsWith("http://", ignoreCase = true) || trimmed.startsWith("https://", ignoreCase = true)) {
         return trimmed
     }
-
-    // Providers without a Transparency Hub entry go straight to their homepage. Checked first so
-    // that e.g. "North Carolina DOT" isn't swallowed by the hub's generic "dot" catch-all.
-    resolveProviderHomepageUrl(trimmed)?.let { return it }
-
-    // Hub-backed sources share one curated link per provider, so the map and the hub never disagree.
     val hubId = resolveTransparencyHubDataSourceId(trimmed)
-    MockDatasetTransparencyDataSource.dataSources.firstOrNull { it.id == hubId }?.let { return it.documentationUrl }
-
-    return "https://www.google.com/search?q=${encodeQueryParam(trimmed)}"
-}
-
-private fun resolveProviderHomepageUrl(source: String): String? {
-    val lower = source.lowercase()
-    return when {
-        lower.contains("idot") -> "https://idot.illinois.gov/"
-        lower.contains("colorado dot") -> "https://www.codot.gov/"
-        lower.contains("wyoming dot") -> "https://www.dot.state.wy.us/"
-        lower.contains("wyoming game") -> "https://wgfd.wyoming.gov/"
-        lower.contains("north carolina dot") -> "https://www.ncdot.gov/"
-        lower.contains("florida fish and wildlife") -> "https://myfwc.com/"
-        lower.contains("national park service") -> "https://www.nps.gov/"
-        lower.contains("us forest service") || lower == "usfs" || lower.startsWith("usfs ") -> "https://www.fs.usda.gov/"
-        lower.contains("federal railroad") -> "https://railroads.dot.gov/"
-        lower.contains("bureau of reclamation") -> "https://www.usbr.gov/"
-        lower.contains("blm") -> "https://www.blm.gov/"
-        lower.contains("msdis") || lower.contains("missouri spatial data") -> "https://msdis.missouri.edu/"
-        lower.contains("missouri state highway patrol") -> "https://www.mshp.dps.missouri.gov/"
-        lower.contains("illinois natural history survey") -> "https://inhs.illinois.edu/"
-        lower.contains("elwha klallam") -> "https://www.elwha.org/"
-        lower.contains("orca network") -> "https://www.orcanetwork.org/"
-        lower.contains("audubon") -> "https://www.audubon.org/"
-        lower.contains("east-west gateway") -> "https://www.ewgateway.org/"
-        lower.contains("puget sound regional council") -> "https://www.psrc.org/"
-        lower == "marc" -> "https://www.marc.org/"
-        lower == "oto" -> "https://www.ozarkstransportation.org/"
-        lower.contains("noaa") -> "https://www.fisheries.noaa.gov/"
-        else -> null
-    }
-}
-
-private fun encodeQueryParam(value: String): String = buildString {
-    for (byte in value.encodeToByteArray()) {
-        val c = byte.toInt().toChar()
-        when {
-            c.isLetterOrDigit() && byte >= 0 || c in "-_.~" -> append(c)
-            c == ' ' -> append('+')
-            else -> {
-                val v = byte.toInt() and 0xFF
-                append('%')
-                append("0123456789ABCDEF"[v shr 4])
-                append("0123456789ABCDEF"[v and 0x0F])
-            }
-        }
-    }
+    DataSourceCatalog.dataSources.firstOrNull { it.id == hubId }?.let { return it.documentationUrl }
+    return "https://www.google.com/search?q=${encodeUrlParam(trimmed).replace("%20", "+")}"
 }
 
 fun resolveTransparencyHubDataSourceId(source: String): String? {
     val lower = source.lowercase()
     return when {
-        lower.contains("wcpp") || (lower.contains("usdot") && lower.contains("pilot")) -> "usdot_wcpp"
-        lower.contains("caltrans") -> "caltrans_crossings"
-        lower.contains("cdot") -> "cdot_crossings"
-        lower.contains("wsdot") && (lower.contains("crossing") || lower.contains("barrier") || lower.contains("fish") || lower.contains("pass") || lower.contains("snoqualmie")) -> "wsdot_fish_wildlife"
-        lower.contains("gbif") -> "gbif"
         lower.contains("inaturalist") -> "inaturalist"
-        lower.contains("movebank") -> "movebank"
-        lower.contains("ebird") -> "ebird"
+        lower.contains("gbif") -> "gbif"
         lower.contains("overpass") || lower.contains("openstreetmap") || lower.contains("osm") -> "osm_overpass"
-        lower.contains("nid") || (lower.contains("usace") && lower.contains("dam")) -> "usace_dams"
-        lower.contains("usace") && (lower.contains("salmon") || lower.contains("nwd") || lower.contains("northwestern") || lower.contains("seattle")) -> "usace_nwd_salmon"
-        lower.contains("usace") -> "usace_dams"
-        lower.contains("mdc") -> "mdc_wildlife"
-        lower.contains("modot") -> "modot_wvc"
-        lower.contains("census") || lower.contains("tiger") -> "us_census"
-        lower.contains("idnr") || lower.contains("illinois dnr") -> "idnr_wildlife"
-        lower.contains("wdfw") -> "wdfw_salmon"
-        lower.contains("wsdot") -> "wsdot_fish_wildlife"
-        lower.contains("faa") || lower.contains("nwsd") -> "faa_nwsd"
-        lower.contains("fars") || lower.contains("nhtsa") -> "nhtsa_fars"
-        lower.contains("ipac") || lower.contains("usfws") -> "usfws_ipac"
-        lower.contains("usgs") || lower.contains("gap") -> "usgs_gap"
-        lower.contains("natureserve") -> "natureserve"
-        lower.contains("nasa") || lower.contains("sedac") || lower.contains("human footprint") -> "nasa_human_footprint"
-        lower.contains("dot") -> "state_dot_wvc"
+        lower.contains("national bridge") || lower.contains("nbi") || lower.contains("fhwa") -> "fhwa_nbi"
+        lower.contains("census") || lower.contains("tigerweb") -> "census_tigerweb"
         else -> null
     }
 }
@@ -191,8 +121,15 @@ fun FeatureDetailBottomSheet(
     }
     val primarySource = splitSourceNames(currentSource).firstOrNull() ?: currentSource
     // A single collision report links to its own observation page, not just the provider.
-    val primaryUrl = (feature as? MapFeatureSelection.Collision)?.report?.observationUrl
-        ?: resolveDataSourceUrl(primarySource)
+    // Every feature that maps to a single source record links straight to that record.
+    val recordUrl = when (feature) {
+        is MapFeatureSelection.Collision -> feature.report.observationUrl
+        is MapFeatureSelection.Wildlife -> feature.occurrence.recordUrl
+        is MapFeatureSelection.Crossing -> feature.crossing.recordUrl
+        is MapFeatureSelection.Barrier -> feature.barrier.id.toOsmUrl()
+        else -> null
+    }
+    val primaryUrl = recordUrl ?: resolveDataSourceUrl(primarySource)
     val hubDataSourceId = resolveTransparencyHubDataSourceId(currentSource)
 
     ModalBottomSheet(
@@ -273,59 +210,38 @@ fun FeatureDetailBottomSheet(
             when (feature) {
                 is MapFeatureSelection.Wildlife -> {
                     val occ = feature.occurrence
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    ) {
-                        SuggestionChip(
-                            onClick = {},
-                            label = { Text("Taxon: ${occ.taxonGroup}") }
+                    InfoChips(
+                        listOfNotNull(
+                            "Taxon: ${occ.taxonGroup}",
+                            occ.observedOn?.let { "Observed: ${it.take(10)}" },
+                            occ.observationCount.takeIf { it > 1 }?.let { "Individuals: $it" },
+                            occ.conservationStatus?.let { "Status: $it" }
                         )
-                        if (!occ.conservationStatus.isNullOrBlank()) {
-                            SuggestionChip(
-                                onClick = {},
-                                label = { Text("Status: ${occ.conservationStatus}") }
-                            )
-                        }
-                        SuggestionChip(
-                            onClick = {},
-                            label = { Text("Observations: ${occ.observationCount}") }
-                        )
-                    }
-
+                    )
                     DetailCard(
                         scientificName = occ.species,
                         source = occ.source,
                         location = occ.location,
-                        description = "Recorded observation in conflict zone database."
+                        description = "Sighting record from ${occ.source}."
                     )
                 }
 
                 is MapFeatureSelection.Hotspot -> {
                     val hs = feature.hotspot
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    ) {
-                        SuggestionChip(
-                            onClick = {},
-                            label = { Text("Severity: ${hs.severity.name}") }
+                    InfoChips(
+                        listOfNotNull(
+                            "Reports: ${hs.incidentCount}",
+                            "Severity: ${hs.severity.name}",
+                            hs.highwayOrRouteName?.let { "Near: $it" }
                         )
-                        SuggestionChip(
-                            onClick = {},
-                            label = { Text("Incidents: ${hs.incidentCount}") }
-                        )
-                    }
-
+                    )
                     DetailCard(
-                        scientificName = "Primary Species: ${hs.primarySpeciesAffected}",
+                        scientificName = "Most reported: ${hs.primarySpeciesAffected}",
                         source = hs.source,
                         location = hs.location,
-                        description = hs.description ?: "High-frequency wildlife vehicle collision area requiring mitigation."
+                        description = (hs.description ?: "") + " Hotspots are computed in the app from the loaded " +
+                            "reports (no hand-placed points); changing the month filter or map area recomputes them."
                     )
-
                     CollisionVsCrossingCard(
                         lines = listOfNotNull(
                             nearestCrossingLine(hs.location, crossings),
@@ -336,86 +252,62 @@ fun FeatureDetailBottomSheet(
 
                 is MapFeatureSelection.Barrier -> {
                     val bar = feature.barrier
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    ) {
-                        SuggestionChip(
-                            onClick = {},
-                            label = { Text("Type: ${bar.type.name}") }
+                    InfoChips(
+                        listOfNotNull(
+                            "Type: ${bar.type.name.lowercase().replaceFirstChar { it.uppercase() }}",
+                            "Impact class: ${bar.impactLevel.name.lowercase()}",
+                            bar.lengthKm?.let { "Segment: ${formatKm(it)}" }
                         )
-                        SuggestionChip(
-                            onClick = {},
-                            label = { Text("Impact: ${bar.impactLevel.name}") }
-                        )
-                        if (bar.lengthKm != null) {
-                            SuggestionChip(
-                                onClick = {},
-                                label = { Text("Length: ${bar.lengthKm} km") }
-                            )
-                        }
-                    }
-
+                    )
                     DetailCard(
-                        scientificName = "Barrier ID: ${bar.id}",
+                        scientificName = bar.name,
                         source = bar.source,
                         location = bar.location,
-                        description = bar.description ?: "Physical structure restricting terrestrial or aquatic organism movement."
+                        description = (bar.description?.let { "$it. " } ?: "") +
+                            "Impact class follows the road class: motorway severe, trunk high, primary moderate."
                     )
                 }
 
                 is MapFeatureSelection.Population -> {
                     val pop = feature.zone
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    ) {
-                        SuggestionChip(
-                            onClick = {},
-                            label = { Text("Level: ${pop.urbanLevel.name}") }
+                    InfoChips(
+                        listOf(
+                            "Population: ${formatCount(pop.population)}",
+                            "Land: ${formatDecimal(pop.landAreaKm2)} km²",
+                            "Density: ${formatCount(pop.densityScore.toInt())} / km²"
                         )
-                        SuggestionChip(
-                            onClick = {},
-                            label = { Text("Density: ${pop.densityScore.toInt()} / km²") }
-                        )
-                    }
-
+                    )
                     DetailCard(
-                        scientificName = "Region: ${pop.regionName}",
+                        scientificName = pop.regionName,
                         source = pop.source,
                         location = pop.centerLocation,
-                        description = "Census population density zone indicating potential anthropogenic footprint pressure."
+                        description = "2020 Census count for this tract. Density is people per km² of land."
                     )
                 }
 
                 is MapFeatureSelection.Crossing -> {
                     val xing = feature.crossing
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    ) {
-                        SuggestionChip(
-                            onClick = {},
-                            label = { Text("Type: ${xing.structureType.name.replace('_', ' ')}") }
+                    InfoChips(
+                        listOfNotNull(
+                            if (xing.kind == CrossingKind.DEDICATED) "Dedicated wildlife crossing" else "Existing waterway structure",
+                            "Type: ${xing.structureType.name.lowercase().replace('_', ' ')}",
+                            xing.averageDailyTraffic?.let { "Traffic: ${formatCount(it)} vehicles/day" },
+                            xing.yearBuilt?.let { "Built: $it" }
                         )
-                        if (xing.structureCount > 1) {
-                            SuggestionChip(
-                                onClick = {},
-                                label = { Text("Structures: ${xing.structureCount}") }
-                            )
-                        }
-                    }
-
+                    )
                     DetailCard(
-                        scientificName = "Target Species: ${xing.targetSpecies}",
+                        scientificName = listOfNotNull(
+                            xing.carries?.let { "Carries: $it" },
+                            xing.crosses?.let { "Over: $it" }
+                        ).joinToString(" · ").ifBlank { xing.name },
                         source = xing.source,
                         location = xing.location,
-                        description = xing.description ?: "Structure that lets wildlife cross a road or dam safely."
+                        description = (xing.description?.let { "$it " } ?: "") + if (xing.kind == CrossingKind.WATERWAY_STRUCTURE) {
+                            "Not built for wildlife, but stream corridors under roads are routes animals already use."
+                        } else {
+                            "Built for animals to cross the road."
+                        }
                     )
-
                     CollisionVsCrossingCard(
                         lines = listOfNotNull(
                             nearbyHotspotsLine(xing.location, hotspots),
@@ -426,23 +318,7 @@ fun FeatureDetailBottomSheet(
 
                 is MapFeatureSelection.Collision -> {
                     val report = feature.report
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    ) {
-                        SuggestionChip(
-                            onClick = {},
-                            label = { Text("Group: ${report.taxonGroup}") }
-                        )
-                        report.observedOn?.let { date ->
-                            SuggestionChip(
-                                onClick = {},
-                                label = { Text("Observed: $date") }
-                            )
-                        }
-                    }
-
+                    InfoChips(listOfNotNull("Group: ${report.taxonGroup}", report.observedOn?.let { "Observed: ${it.take(10)}" }))
                     DetailCard(
                         scientificName = report.species,
                         source = report.source,
@@ -450,7 +326,6 @@ fun FeatureDetailBottomSheet(
                         description = "Community-reported dead animal at this exact spot. Most of these reports are " +
                             "road mortality, but the dead-animal annotation alone doesn't confirm a vehicle strike."
                     )
-
                     CollisionVsCrossingCard(
                         lines = listOfNotNull(nearestCrossingLine(report.location, crossings))
                     )
@@ -475,8 +350,8 @@ fun FeatureDetailBottomSheet(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (feature is MapFeatureSelection.Collision && feature.report.observationUrl != null) {
-                            "View Original Report"
+                        text = if (recordUrl != null) {
+                            "View Original Record"
                         } else {
                             "Open Data Source ($primarySource)"
                         },
@@ -690,4 +565,34 @@ internal fun nearbyHotspotsLine(from: GeoLocation, hotspots: List<CollisionHotsp
 
 internal fun formatKm(km: Double): String {
     return if (km < 10.0) "${(km * 10).toInt() / 10.0} km" else "${km.toInt()} km"
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun InfoChips(labels: List<String>) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(bottom = 12.dp)
+    ) {
+        labels.forEach { label -> SuggestionChip(onClick = {}, label = { Text(label) }) }
+    }
+}
+
+/** "osm_way_123" -> https://www.openstreetmap.org/way/123 */
+internal fun String.toOsmUrl(): String? {
+    val parts = split('_')
+    if (parts.size != 3 || parts[0] != "osm" || parts[1] !in setOf("way", "node", "relation")) return null
+    return "https://www.openstreetmap.org/${parts[1]}/${parts[2]}"
+}
+
+internal fun formatCount(n: Int): String {
+    val digits = kotlin.math.abs(n).toString()
+    val grouped = digits.reversed().chunked(3).joinToString(",").reversed()
+    return if (n < 0) "-$grouped" else grouped
+}
+
+internal fun formatDecimal(value: Double): String {
+    val tenths = kotlin.math.round(value * 10).toLong()
+    return "${tenths / 10}.${kotlin.math.abs(tenths % 10)}"
 }

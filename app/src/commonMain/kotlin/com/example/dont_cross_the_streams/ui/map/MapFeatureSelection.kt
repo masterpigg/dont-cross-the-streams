@@ -36,7 +36,7 @@ sealed interface MapFeatureSelection {
     }
 
     data class Population(val zone: PopulationDensityZone) : MapFeatureSelection {
-        override val id: String = zone.regionName
+        override val id: String = zone.id
         override val title: String = zone.regionName
         override val subtitle: String = "${zone.urbanLevel.name} • ${zone.densityScore.toInt()} people/km²"
         override val location: GeoLocation = zone.centerLocation

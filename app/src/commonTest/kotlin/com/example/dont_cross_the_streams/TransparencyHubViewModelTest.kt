@@ -41,18 +41,18 @@ class TransparencyHubViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
         val state = viewModel.uiState.value
 
-        assertEquals(23, state.dataSources.size)
+        assertEquals(5, state.dataSources.size)
         assertNotNull(state.selectedDataSource)
     }
 
     @Test
     fun updateSearchQuery_filtersDataSourcesByText() = runTest {
         testDispatcher.scheduler.advanceUntilIdle()
-        viewModel.updateSearchQuery("eBird")
+        viewModel.updateSearchQuery("Bridge")
 
         val state = viewModel.uiState.value
         assertTrue(state.filteredDataSources.isNotEmpty())
-        assertTrue(state.filteredDataSources.any { it.id == "ebird" })
+        assertTrue(state.filteredDataSources.any { it.id == "fhwa_nbi" })
     }
 
     @Test

@@ -16,14 +16,14 @@ class DatasetTransparencyRepositoryTest {
     @Test
     fun getAllDataSources_returnsDataSources() = runTest {
         val dataSources = repository.getAllDataSources().first()
-        assertEquals(23, dataSources.size)
+        assertEquals(5, dataSources.size)
     }
 
     @Test
     fun getDataSourceById_returnsCorrectDataSource() = runTest {
         val gbif = repository.getDataSourceById("gbif").first()
         assertNotNull(gbif)
-        assertEquals("GBIF (Global Biodiversity Information Facility)", gbif?.name)
+        assertEquals("GBIF Occurrence API", gbif?.name)
     }
 
     @Test
@@ -37,6 +37,6 @@ class DatasetTransparencyRepositoryTest {
     fun searchDataSources_returnsFilteredDataSources() = runTest {
         val searchResults = repository.searchDataSources("Census").first()
         assertTrue(searchResults.isNotEmpty())
-        assertTrue(searchResults.any { it.id == "us_census" })
+        assertTrue(searchResults.any { it.id == "census_tigerweb" })
     }
 }

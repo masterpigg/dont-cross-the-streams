@@ -1,129 +1,115 @@
 package com.example.dont_cross_the_streams.ui.map
 
-import com.example.dont_cross_the_streams.ui.common.ViewModel
-import com.example.dont_cross_the_streams.data.repository.BarrierRepositoryImpl
-import com.example.dont_cross_the_streams.data.repository.CollisionReportRepositoryImpl
-import com.example.dont_cross_the_streams.data.repository.ConflictMatrixRepositoryImpl
-import com.example.dont_cross_the_streams.data.repository.WildlifeRepositoryImpl
+import com.example.dont_cross_the_streams.data.analysis.HotspotClustering
+import com.example.dont_cross_the_streams.data.repository.LiveGeoDataRepository
 import com.example.dont_cross_the_streams.domain.model.BarrierType
 import com.example.dont_cross_the_streams.domain.model.BoundingBox
 import com.example.dont_cross_the_streams.domain.model.GeoLocation
-import com.example.dont_cross_the_streams.domain.repository.BarrierRepository
-import com.example.dont_cross_the_streams.domain.repository.CollisionReportRepository
-import com.example.dont_cross_the_streams.domain.repository.ConflictMatrixRepository
-import com.example.dont_cross_the_streams.domain.repository.WildlifeRepository
+import com.example.dont_cross_the_streams.domain.repository.GeoDataRepository
+import com.example.dont_cross_the_streams.ui.common.ViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class MapViewModel(
-    private val wildlifeRepository: WildlifeRepository = WildlifeRepositoryImpl(),
-    private val barrierRepository: BarrierRepository = BarrierRepositoryImpl(),
-    private val conflictMatrixRepository: ConflictMatrixRepository = ConflictMatrixRepositoryImpl(),
-    private val collisionReportRepository: CollisionReportRepository = CollisionReportRepositoryImpl()
+    private val repository: GeoDataRepository = LiveGeoDataRepository()
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(MapUiState(isLoading = true))
+    private val _uiState = MutableStateFlow(MapUiState())
     val uiState: StateFlow<MapUiState> = _uiState.asStateFlow()
 
-    private var collisionJob: Job? = null
-    private var lastCollisionBounds: BoundingBox? = null
+    private val layerJobs = mutableMapOf<MapLayer, Job>()
+
+    /** Area (and zoom) each layer was last fetched for, so small pans don't re-query the APIs. */
+    private val loadedFor = mutableMapOf<MapLayer, Pair<BoundingBox, Float>>()
 
     init {
-        loadMapData()
-        scheduleCollisionRefresh(immediate = true)
+        refreshViewport(immediate = true)
     }
 
-    fun loadMapData() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            try {
-                combine(
-                    wildlifeRepository.getWildlifeOccurrences(),
-                    wildlifeRepository.getCollisionHotspots(),
-                    barrierRepository.getBarrierFeatures(),
-                    conflictMatrixRepository.getPopulationDensityZones(),
-                    barrierRepository.getWildlifeCrossings()
-                ) { occurrences, hotspots, barriers, popZones, crossings ->
-                    { state: MapUiState ->
-                        state.copy(
-                            allWildlifeOccurrences = occurrences,
-                            allCollisionHotspots = hotspots,
-                            allBarriers = barriers,
-                            allPopulationZones = popZones,
-                            allWildlifeCrossings = crossings,
-                            isLoading = false
-                        )
-                    }
-                }.catch { e ->
-                    _uiState.update { it.copy(isLoading = false, errorMessage = e.message ?: "Error loading map data") }
-                }.collect { applyData ->
-                    _uiState.update(applyData)
-                }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message ?: "Unexpected error") }
-            }
-        }
+    // ---- Layer toggles -------------------------------------------------------------------------
+
+    fun toggleWildlifeOverlay() = toggle { it.copy(showWildlifeOccurrences = !it.showWildlifeOccurrences) }
+
+    fun toggleHotspotsOverlay() = toggle { it.copy(showCollisionHotspots = !it.showCollisionHotspots) }
+
+    fun toggleBarriersOverlay() = toggle { it.copy(showBarriers = !it.showBarriers) }
+
+    fun togglePopulationDensityOverlay() = toggle { it.copy(showPopulationDensity = !it.showPopulationDensity) }
+
+    fun toggleCrossingsOverlay() = toggle { it.copy(showWildlifeCrossings = !it.showWildlifeCrossings) }
+
+    fun toggleCollisionReportsOverlay() = toggle { it.copy(showCollisionReports = !it.showCollisionReports) }
+
+    private fun toggle(change: (MapUiState) -> MapUiState) {
+        _uiState.update(change)
+        refreshViewport(immediate = true)
     }
 
-    fun toggleWildlifeOverlay() {
-        _uiState.update { it.copy(showWildlifeOccurrences = !it.showWildlifeOccurrences) }
-    }
-
-    fun toggleHotspotsOverlay() {
-        _uiState.update { it.copy(showCollisionHotspots = !it.showCollisionHotspots) }
-    }
-
-    fun toggleBarriersOverlay() {
-        _uiState.update { it.copy(showBarriers = !it.showBarriers) }
-    }
-
-    fun togglePopulationDensityOverlay() {
-        _uiState.update { it.copy(showPopulationDensity = !it.showPopulationDensity) }
-    }
-
-    fun toggleCrossingsOverlay() {
-        _uiState.update { it.copy(showWildlifeCrossings = !it.showWildlifeCrossings) }
-    }
-
-    fun toggleCollisionReportsOverlay() {
-        _uiState.update { it.copy(showCollisionReports = !it.showCollisionReports) }
-        scheduleCollisionRefresh(immediate = true)
-    }
+    // ---- Filters -------------------------------------------------------------------------------
 
     fun toggleTaxonGroup(taxonGroup: String) {
-        _uiState.update { currentState ->
-            val current = currentState.selectedTaxonGroups.toMutableSet()
-            if (current.contains(taxonGroup)) {
-                current.remove(taxonGroup)
-            } else {
-                current.add(taxonGroup)
-            }
-            currentState.copy(selectedTaxonGroups = current, activePreset = null)
+        _uiState.update { state ->
+            val groups = state.selectedTaxonGroups.toMutableSet()
+            if (!groups.remove(taxonGroup)) groups.add(taxonGroup)
+            state.copy(selectedTaxonGroups = groups, activePreset = null)
         }
+        recomputeHotspots()
     }
 
     fun toggleBarrierType(barrierType: BarrierType) {
-        _uiState.update { currentState ->
-            val current = currentState.selectedBarrierTypes.toMutableSet()
-            if (current.contains(barrierType)) {
-                current.remove(barrierType)
-            } else {
-                current.add(barrierType)
-            }
-            currentState.copy(selectedBarrierTypes = current, activePreset = null)
+        _uiState.update { state ->
+            val types = state.selectedBarrierTypes.toMutableSet()
+            if (!types.remove(barrierType)) types.add(barrierType)
+            state.copy(selectedBarrierTypes = types, activePreset = null)
         }
     }
 
+    /** Adds or removes a month (1-12) from the seasonal filter. No months selected means all months. */
+    fun toggleMonth(month: Int) {
+        if (month !in 1..12) return
+        _uiState.update { state ->
+            val months = state.selectedMonths.toMutableSet()
+            if (!months.remove(month)) months.add(month)
+            state.copy(selectedMonths = months)
+        }
+        recomputeHotspots()
+    }
+
+    fun clearMonths() {
+        _uiState.update { it.copy(selectedMonths = emptySet()) }
+        recomputeHotspots()
+    }
+
+    fun resetFilters() {
+        _uiState.update { state ->
+            val defaults = MapUiState()
+            state.copy(
+                selectedTaxonGroups = defaults.selectedTaxonGroups,
+                selectedBarrierTypes = defaults.selectedBarrierTypes,
+                selectedMonths = emptySet(),
+                showWildlifeOccurrences = true,
+                showCollisionHotspots = true,
+                showBarriers = true,
+                showPopulationDensity = true,
+                showWildlifeCrossings = true,
+                showCollisionReports = true,
+                activePreset = null
+            )
+        }
+        recomputeHotspots()
+        refreshViewport(immediate = true)
+    }
+
+    // ---- Camera --------------------------------------------------------------------------------
+
     fun applyPreset(preset: ConflictRegionPreset) {
-        _uiState.update { currentState ->
-            currentState.copy(
+        _uiState.update { state ->
+            state.copy(
                 mapCenter = preset.center,
                 zoomLevel = preset.zoomLevel,
                 panOffsetX = 0f,
@@ -134,7 +120,8 @@ class MapViewModel(
                 isFilterSheetVisible = false
             )
         }
-        scheduleCollisionRefresh()
+        recomputeHotspots()
+        refreshViewport()
     }
 
     fun selectFeature(feature: MapFeatureSelection?) {
@@ -146,128 +133,146 @@ class MapViewModel(
     }
 
     fun setPanOffset(dx: Float, dy: Float) {
-        _uiState.update { currentState ->
-            currentState.copy(
-                panOffsetX = currentState.panOffsetX + dx,
-                panOffsetY = currentState.panOffsetY + dy
-            )
-        }
+        _uiState.update { it.copy(panOffsetX = it.panOffsetX + dx, panOffsetY = it.panOffsetY + dy) }
     }
 
     fun panDirection(dLat: Double, dLon: Double) {
-        _uiState.update { currentState ->
+        _uiState.update { state ->
             // Move a fixed share of the screen per click so the step feels the same at every zoom.
             val newCenter = WebMercator.panBy(
-                center = currentState.mapCenter,
-                zoom = currentState.zoomLevel.toDouble(),
+                center = state.mapCenter,
+                zoom = state.zoomLevel.toDouble(),
                 dx = -dLon * PAN_STEP_PX,
                 dy = dLat * PAN_STEP_PX
             )
-            currentState.copy(mapCenter = newCenter, panOffsetX = 0f, panOffsetY = 0f)
+            state.copy(mapCenter = newCenter, panOffsetX = 0f, panOffsetY = 0f)
         }
-        scheduleCollisionRefresh()
+        refreshViewport()
     }
 
     fun zoomIn() {
-        _uiState.update { currentState ->
-            currentState.copy(zoomLevel = (currentState.zoomLevel + 1f).coerceAtMost(WebMercator.MAX_ZOOM))
-        }
-        scheduleCollisionRefresh()
+        _uiState.update { it.copy(zoomLevel = (it.zoomLevel + 1f).coerceAtMost(WebMercator.MAX_ZOOM)) }
+        refreshViewport()
     }
 
     fun zoomOut() {
-        _uiState.update { currentState ->
-            currentState.copy(zoomLevel = (currentState.zoomLevel - 1f).coerceAtLeast(WebMercator.MIN_ZOOM))
-        }
-        scheduleCollisionRefresh()
+        _uiState.update { it.copy(zoomLevel = (it.zoomLevel - 1f).coerceAtLeast(WebMercator.MIN_ZOOM)) }
+        refreshViewport()
     }
 
     fun resetView() {
-        _uiState.update { currentState ->
-            currentState.copy(
-                mapCenter = GeoLocation(39.8283, -98.5795),
-                zoomLevel = 4.5f,
-                panOffsetX = 0f,
-                panOffsetY = 0f,
-                activePreset = null
-            )
+        _uiState.update {
+            it.copy(mapCenter = DEFAULT_MAP_CENTER, zoomLevel = DEFAULT_MAP_ZOOM, panOffsetX = 0f, panOffsetY = 0f, activePreset = null)
         }
-        scheduleCollisionRefresh()
+        refreshViewport()
     }
 
     fun updateMapCenterAndZoom(center: GeoLocation, zoom: Float) {
-        _uiState.update { currentState ->
-            currentState.copy(
+        _uiState.update {
+            it.copy(
                 mapCenter = center,
                 zoomLevel = zoom.coerceIn(WebMercator.MIN_ZOOM, WebMercator.MAX_ZOOM),
                 panOffsetX = 0f,
                 panOffsetY = 0f
             )
         }
-        scheduleCollisionRefresh()
+        refreshViewport()
+    }
+
+    // ---- Live data -----------------------------------------------------------------------------
+
+    private fun isWanted(layer: MapLayer, state: MapUiState): Boolean = when (layer) {
+        MapLayer.WILDLIFE -> state.showWildlifeOccurrences
+        MapLayer.COLLISIONS -> state.showCollisionReports || state.showCollisionHotspots
+        MapLayer.INFRASTRUCTURE -> state.showBarriers || state.showWildlifeCrossings
+        MapLayer.STRUCTURES -> state.showWildlifeCrossings
+        MapLayer.POPULATION -> state.showPopulationDensity
     }
 
     /**
-     * Collision reports are fetched for the area on screen, so they follow the viewport. Gestures
-     * fire many updates per second; the debounce waits for the map to settle before hitting the API.
+     * Fetches every visible layer for the area on screen. Gestures fire many camera updates per
+     * second, so requests wait for the map to settle; an area already covered by the last fetch at a
+     * similar zoom is not requested again.
      */
-    private fun scheduleCollisionRefresh(immediate: Boolean = false) {
+    private fun refreshViewport(immediate: Boolean = false) {
         val state = _uiState.value
-        if (!state.showCollisionReports) {
-            collisionJob?.cancel()
-            return
-        }
+        val zoom = state.zoomLevel
         val bounds = WebMercator.visibleBounds(
             center = state.mapCenter,
-            zoom = state.zoomLevel.toDouble(),
+            zoom = zoom.toDouble(),
             widthPx = ASSUMED_VIEWPORT_WIDTH_PX,
             heightPx = ASSUMED_VIEWPORT_HEIGHT_PX
         )
-        val last = lastCollisionBounds
-        if (last != null && last.covers(bounds) && last.areaDeg2() <= bounds.areaDeg2() * MAX_REUSE_AREA_RATIO) {
-            // Still inside the last fetch and not zoomed in far enough to need denser local results.
-            return
-        }
-
-        collisionJob?.cancel()
-        collisionJob = viewModelScope.launch {
-            if (!immediate) delay(COLLISION_REFRESH_DEBOUNCE_MS)
-            _uiState.update { it.copy(collisionReportStatus = CollisionReportStatus.LOADING) }
-            val reports = collisionReportRepository.getCollisionReports(bounds)
-            if (reports == null) {
-                // Keep whatever was already on the map; it is still real data.
-                _uiState.update { it.copy(collisionReportStatus = CollisionReportStatus.UNAVAILABLE) }
-            } else {
-                lastCollisionBounds = bounds
-                _uiState.update {
-                    it.copy(collisionReports = reports, collisionReportStatus = CollisionReportStatus.LOADED)
-                }
+        for (layer in MapLayer.entries) {
+            if (!isWanted(layer, state)) {
+                layerJobs.remove(layer)?.cancel()
+                continue
+            }
+            if (zoom < layer.minZoom) {
+                layerJobs.remove(layer)?.cancel()
+                setStatus(layer, LayerLoadState.ZOOM_IN)
+                continue
+            }
+            val previous = loadedFor[layer]
+            val needsCulverts = layer == MapLayer.INFRASTRUCTURE && zoom >= CULVERT_MIN_ZOOM &&
+                (previous?.second ?: 0f) < CULVERT_MIN_ZOOM
+            if (previous != null && !needsCulverts && previous.first.covers(bounds) &&
+                previous.first.areaDeg2() <= bounds.areaDeg2() * MAX_REUSE_AREA_RATIO
+            ) {
+                if (state.statusOf(layer) == LayerLoadState.ZOOM_IN) setStatus(layer, LayerLoadState.LOADED)
+                continue
+            }
+            layerJobs.remove(layer)?.cancel()
+            layerJobs[layer] = viewModelScope.launch {
+                if (!immediate) delay(VIEWPORT_DEBOUNCE_MS)
+                setStatus(layer, LayerLoadState.LOADING)
+                val ok = load(layer, bounds, zoom)
+                if (ok) loadedFor[layer] = bounds to zoom
+                setStatus(layer, if (ok) LayerLoadState.LOADED else LayerLoadState.UNAVAILABLE)
             }
         }
     }
 
-    fun resetFilters() {
-        _uiState.update { currentState ->
-            currentState.copy(
-                selectedTaxonGroups = setOf("Mammals", "Birds", "Reptiles", "Fish", "Amphibians"),
-                selectedBarrierTypes = BarrierType.entries.toSet(),
-                showWildlifeOccurrences = true,
-                showCollisionHotspots = true,
-                showBarriers = true,
-                showPopulationDensity = true,
-                showWildlifeCrossings = true,
-                showCollisionReports = true,
-                activePreset = null
-            )
+    /** Loads one layer and replaces its data. Returns false if the source could not be reached. */
+    private suspend fun load(layer: MapLayer, bounds: BoundingBox, zoom: Float): Boolean = when (layer) {
+        MapLayer.WILDLIFE -> repository.wildlifeObservations(bounds)?.let { list ->
+            _uiState.update { it.copy(allWildlifeOccurrences = list) }
+        } != null
+
+        MapLayer.COLLISIONS -> repository.collisionReports(bounds)?.let { list ->
+            _uiState.update { it.copy(collisionReports = list) }
+            recomputeHotspots()
+        } != null
+
+        MapLayer.INFRASTRUCTURE -> repository.infrastructure(bounds, includeCulverts = zoom >= CULVERT_MIN_ZOOM)?.let { infra ->
+            _uiState.update { it.copy(allBarriers = infra.barriers, osmCrossings = infra.crossings) }
+            recomputeHotspots() // hotspot labels name the nearest major road
+        } != null
+
+        MapLayer.STRUCTURES -> repository.waterwayStructures(bounds)?.let { list ->
+            _uiState.update { it.copy(nbiStructures = list) }
+        } != null
+
+        MapLayer.POPULATION -> repository.censusTracts(bounds)?.let { list ->
+            _uiState.update { it.copy(allPopulationZones = list) }
+        } != null
+    }
+
+    private fun setStatus(layer: MapLayer, status: LayerLoadState) {
+        _uiState.update { it.copy(layerStatus = it.layerStatus + (layer to status)) }
+    }
+
+    private fun recomputeHotspots() {
+        _uiState.update { state ->
+            state.copy(allCollisionHotspots = HotspotClustering.cluster(state.filteredCollisionReportsAll, state.allBarriers))
         }
-        scheduleCollisionRefresh(immediate = true)
     }
 }
 
 private const val PAN_STEP_PX = 160.0
 private const val ASSUMED_VIEWPORT_WIDTH_PX = 1600.0
 private const val ASSUMED_VIEWPORT_HEIGHT_PX = 1000.0
-private const val COLLISION_REFRESH_DEBOUNCE_MS = 700L
+private const val VIEWPORT_DEBOUNCE_MS = 700L
 private const val MAX_REUSE_AREA_RATIO = 16.0
 
 private fun BoundingBox.covers(other: BoundingBox): Boolean =

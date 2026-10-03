@@ -89,7 +89,7 @@ fun MainAdaptiveScreenContent(
             ),
             NavigationTabItem(
                 tab = MainTab.RISK_MATRIX,
-                title = "Risk Matrix",
+                title = "Study Areas",
                 icon = Icons.Rounded.Analytics,
                 route = NavRoute.RiskMatrix()
             ),

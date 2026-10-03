@@ -1,13 +1,15 @@
 package com.example.dont_cross_the_streams.ui.risk
 
-import com.example.dont_cross_the_streams.domain.model.RiskLevel
-import com.example.dont_cross_the_streams.domain.model.RiskMatrixScore
+import com.example.dont_cross_the_streams.domain.model.StudyArea
+import com.example.dont_cross_the_streams.domain.model.StudyAreaStats
+import com.example.dont_cross_the_streams.domain.model.StudyAreas
 
+/** State for the Study Areas tab: live, measured counts per jurisdiction. */
 data class RiskMatrixUiState(
-    val regions: List<RiskMatrixScore> = emptyList(),
-    val filteredRegions: List<RiskMatrixScore> = emptyList(),
-    val selectedScore: RiskMatrixScore? = null,
-    val searchQuery: String = "",
-    val filterRiskLevel: RiskLevel? = null,
-    val isLoading: Boolean = false
-)
+    val areas: List<StudyArea> = StudyAreas.all,
+    val stats: Map<String, StudyAreaStats> = emptyMap(),
+    val loadingAreaIds: Set<String> = emptySet(),
+    val selectedAreaId: String? = null
+) {
+    val isLoading: Boolean get() = loadingAreaIds.isNotEmpty()
+}

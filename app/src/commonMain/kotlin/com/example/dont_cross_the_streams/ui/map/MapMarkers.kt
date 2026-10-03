@@ -69,6 +69,36 @@ fun DrawScope.drawWildlifeCrossingMarker(center: Offset, selected: Boolean = fal
     drawPath(arch, color = Color.White, style = Stroke(width = stroke, cap = StrokeCap.Round))
 }
 
+val WaterwayStructureColor = Color(0xFF0288D1)
+
+/**
+ * Existing bridge or culvert over a waterway (NBI / OSM): a smaller blue square with a wave, so it
+ * reads as "possible route under the road" rather than a purpose-built crossing.
+ */
+fun DrawScope.drawWaterwayStructureMarker(center: Offset, culvert: Boolean = false, selected: Boolean = false) {
+    val half = (if (selected) 9.dp else 7.dp).toPx()
+    val stroke = 1.5.dp.toPx()
+    drawRoundRect(
+        color = WaterwayStructureColor,
+        topLeft = Offset(center.x - half, center.y - half),
+        size = Size(half * 2, half * 2),
+        cornerRadius = CornerRadius(if (culvert) half else 3.dp.toPx())
+    )
+    drawRoundRect(
+        color = Color.White,
+        topLeft = Offset(center.x - half, center.y - half),
+        size = Size(half * 2, half * 2),
+        cornerRadius = CornerRadius(if (culvert) half else 3.dp.toPx()),
+        style = Stroke(width = stroke)
+    )
+    val wave = Path().apply {
+        moveTo(center.x - half * 0.6f, center.y)
+        quadraticTo(center.x - half * 0.3f, center.y - half * 0.4f, center.x, center.y)
+        quadraticTo(center.x + half * 0.3f, center.y + half * 0.4f, center.x + half * 0.6f, center.y)
+    }
+    drawPath(wave, color = Color.White, style = Stroke(width = stroke, cap = StrokeCap.Round))
+}
+
 /** Individual collision/carcass report: a small red dot, so hundreds of them stay readable. */
 fun DrawScope.drawCollisionReportMarker(center: Offset, selected: Boolean = false) {
     val radius = (if (selected) 7.dp else 5.dp).toPx()
@@ -87,9 +117,10 @@ fun DrawScope.drawCollisionReportMarker(center: Offset, selected: Boolean = fals
 fun CollisionCrossingLegend(
     showCollisionReports: Boolean,
     showCrossings: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showWaterwayStructures: Boolean = false
 ) {
-    if (!showCollisionReports && !showCrossings) return
+    if (!showCollisionReports && !showCrossings && !showWaterwayStructures) return
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
@@ -104,6 +135,9 @@ fun CollisionCrossingLegend(
             }
             if (showCrossings) {
                 LegendRow(label = "Wildlife crossing") { drawWildlifeCrossingMarker(center) }
+            }
+            if (showWaterwayStructures) {
+                LegendRow(label = "Bridge / culvert over water") { drawWaterwayStructureMarker(center) }
             }
         }
     }

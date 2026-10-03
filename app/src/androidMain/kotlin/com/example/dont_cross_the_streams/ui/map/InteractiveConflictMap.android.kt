@@ -77,6 +77,8 @@ import com.example.dont_cross_the_streams.domain.model.BarrierType
 import com.example.dont_cross_the_streams.domain.model.CollisionHotspot
 import com.example.dont_cross_the_streams.domain.model.CollisionReport
 import com.example.dont_cross_the_streams.domain.model.CollisionSeverity
+import com.example.dont_cross_the_streams.domain.model.CrossingKind
+import com.example.dont_cross_the_streams.domain.model.CrossingStructureType
 import com.example.dont_cross_the_streams.domain.model.GeoLocation
 import com.example.dont_cross_the_streams.domain.model.PopulationDensityZone
 import com.example.dont_cross_the_streams.domain.model.UrbanLevel
@@ -564,7 +566,8 @@ actual fun InteractiveConflictMap(
 
         CollisionCrossingLegend(
             showCollisionReports = collisionReports.isNotEmpty(),
-            showCrossings = wildlifeCrossings.isNotEmpty(),
+            showCrossings = wildlifeCrossings.any { it.kind == CrossingKind.DEDICATED },
+            showWaterwayStructures = wildlifeCrossings.any { it.kind == CrossingKind.WATERWAY_STRUCTURE },
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(start = 16.dp, bottom = 56.dp)
@@ -637,50 +640,34 @@ private class ConflictMapOverlay(
         val proj = mapView.projection
 
         populationZones.forEach { zone ->
-            val bbox = zone.boundingBox
-            val topLeftPoint = proj.toPixels(GeoPoint(bbox.maxLat, bbox.minLon), null)
-            val bottomRightPoint = proj.toPixels(GeoPoint(bbox.minLat, bbox.maxLon), null)
-
-            val left = topLeftPoint.x.toFloat()
-            val top = topLeftPoint.y.toFloat()
-            val right = bottomRightPoint.x.toFloat().coerceAtLeast(left + 40f)
-            val bottom = bottomRightPoint.y.toFloat().coerceAtLeast(top + 40f)
-
-            val (fillColorInt, strokeColorInt) = when (zone.urbanLevel) {
-                UrbanLevel.METROPOLITAN, UrbanLevel.URBAN -> 0x55E53935.toInt() to 0xFFE53935.toInt()
-                UrbanLevel.SUBURBAN -> 0x44FB8C00.toInt() to 0xFFFB8C00.toInt()
-                UrbanLevel.RURAL -> 0x33FDD835.toInt() to 0xFFFDD835.toInt()
-                UrbanLevel.WILDERNESS -> 0x221E88E5.toInt() to 0xFF1E88E5.toInt()
+            // 2020 Census tract boundary, filled by people per km² of land.
+            val path = android.graphics.Path().apply { fillType = android.graphics.Path.FillType.EVEN_ODD }
+            zone.polygon.forEach { ring ->
+                ring.forEachIndexed { idx, geo ->
+                    val pt = proj.toPixels(GeoPoint(geo.latitude, geo.longitude), reusedPoint)
+                    if (idx == 0) path.moveTo(pt.x.toFloat(), pt.y.toFloat()) else path.lineTo(pt.x.toFloat(), pt.y.toFloat())
+                }
+                path.close()
             }
-
-            val isSelected = selectedFeature is MapFeatureSelection.Population &&
-                    (selectedFeature as MapFeatureSelection.Population).zone.id == zone.id
-
-            val rect = RectF(left, top, right, bottom)
-            fillPaint.color = fillColorInt
+            val isSelected = selectedFeature?.id == zone.id
+            fillPaint.color = populationColor(zone.densityScore).toArgb()
             fillPaint.style = Paint.Style.FILL
-            canvas.drawRoundRect(rect, 24f, 24f, fillPaint)
-
-            strokePaint.color = if (isSelected) 0xFFFFD700.toInt() else strokeColorInt
-            strokePaint.strokeWidth = if (isSelected) 6f else 3f
-            canvas.drawRoundRect(rect, 24f, 24f, strokePaint)
-
-            val centerPt = proj.toPixels(GeoPoint(zone.centerLocation.latitude, zone.centerLocation.longitude), reusedPoint)
-            textPaint.color = android.graphics.Color.WHITE
-            textPaint.textSize = 28f
-            textPaint.setShadowLayer(4f, 0f, 0f, android.graphics.Color.BLACK)
-            canvas.drawText(zone.regionName, centerPt.x.toFloat(), centerPt.y.toFloat(), textPaint)
-            textPaint.clearShadowLayer()
+            canvas.drawPath(path, fillPaint)
+            strokePaint.color = if (isSelected) 0xFFFFD700.toInt() else populationColor(zone.densityScore).copy(alpha = 0.7f).toArgb()
+            strokePaint.strokeWidth = if (isSelected) 6f else 2f
+            strokePaint.pathEffect = null
+            canvas.drawPath(path, strokePaint)
         }
 
         barriers.forEach { barrier ->
-            val points = if (barrier.geometryPath.size >= 2) barrier.geometryPath else {
-                listOf(
-                    GeoLocation(barrier.location.latitude - 0.05, barrier.location.longitude - 0.05),
-                    barrier.location,
-                    GeoLocation(barrier.location.latitude + 0.05, barrier.location.longitude + 0.05)
-                )
+            if (barrier.geometryPath.size < 2) {
+                // Point feature (e.g. a dam mapped as a single node).
+                val pt = proj.toPixels(GeoPoint(barrier.location.latitude, barrier.location.longitude), reusedPoint)
+                fillPaint.color = 0xFF00BCD4.toInt()
+                canvas.drawCircle(pt.x.toFloat(), pt.y.toFloat(), 14f, fillPaint)
+                return@forEach
             }
+            val points = barrier.geometryPath
 
             val path = android.graphics.Path()
             val projectedPoints = points.map { geo ->
@@ -720,12 +707,6 @@ private class ConflictMapOverlay(
             strokePaint.strokeJoin = Paint.Join.ROUND
             canvas.drawPath(path, strokePaint)
             strokePaint.pathEffect = null
-
-            val midPt = projectedPoints[projectedPoints.size / 2]
-            fillPaint.color = android.graphics.Color.BLACK
-            canvas.drawCircle(midPt.x.toFloat(), midPt.y.toFloat(), 18f, fillPaint)
-            fillPaint.color = lineColorInt
-            canvas.drawCircle(midPt.x.toFloat(), midPt.y.toFloat(), 14f, fillPaint)
         }
 
         collisionHotspots.forEach { hotspot ->
@@ -830,12 +811,23 @@ private class ConflictMapOverlay(
             val pt = proj.toPixels(GeoPoint(crossing.location.latitude, crossing.location.longitude), reusedPoint)
             val px = pt.x.toFloat()
             val py = pt.y.toFloat()
-            val half = 28f
+            val dedicated = crossing.kind == CrossingKind.DEDICATED
+            val half = if (dedicated) 28f else 18f
             if (selectedFeature?.id == crossing.id) {
                 fillPaint.color = 0xFFFFD700.toInt()
                 canvas.drawCircle(px, py, half + 18f, fillPaint)
             }
             val rect = RectF(px - half, py - half, px + half, py + half)
+            if (!dedicated) {
+                // Existing bridge/culvert over water: smaller blue marker (round for culverts).
+                val corner = if (crossing.structureType == CrossingStructureType.CULVERT) half else 6f
+                fillPaint.color = WaterwayStructureColor.toArgb()
+                canvas.drawRoundRect(rect, corner, corner, fillPaint)
+                strokePaint.color = android.graphics.Color.WHITE
+                strokePaint.strokeWidth = 3f
+                canvas.drawRoundRect(rect, corner, corner, strokePaint)
+                return@forEach
+            }
             fillPaint.color = WildlifeCrossingColor.toArgb()
             canvas.drawRoundRect(rect, 10f, 10f, fillPaint)
             strokePaint.color = android.graphics.Color.WHITE

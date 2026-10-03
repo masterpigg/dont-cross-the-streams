@@ -3,100 +3,55 @@ package com.example.dont_cross_the_streams.ui.map
 import com.example.dont_cross_the_streams.domain.model.BarrierType
 import com.example.dont_cross_the_streams.domain.model.GeoLocation
 
+/** Camera shortcuts for the St. Louis study region. Presets only move the map; they add no data. */
 enum class ConflictRegionPreset(
     val title: String,
     val subtitle: String,
     val center: GeoLocation,
     val zoomLevel: Float,
-    val taxonGroups: Set<String>,
-    val barrierTypes: Set<BarrierType>
+    val taxonGroups: Set<String> = setOf("Mammals", "Birds", "Reptiles", "Amphibians"),
+    val barrierTypes: Set<BarrierType> = BarrierType.entries.toSet()
 ) {
-    MISSOURI_I70_CORRIDOR(
-        title = "Missouri I-70 & Deer Corridor",
-        subtitle = "Severe deer-vehicle collision zone & interstate divide",
-        center = GeoLocation(38.95, -92.33),
-        zoomLevel = 9.0f,
-        taxonGroups = setOf("Mammals", "Birds"),
-        barrierTypes = setOf(BarrierType.HIGHWAY, BarrierType.RAILWAY)
+    STL_REGION(
+        title = "St. Louis Region",
+        subtitle = "St. Louis City, St. Louis County and St. Charles County",
+        center = GeoLocation(38.70, -90.45),
+        zoomLevel = 10f
     ),
-    OZARK_BAGNELL_DAM(
-        title = "Ozarks & Bagnell Dam Barrier",
-        subtitle = "Osage river aquatic barrier, elk & black bear corridors",
-        center = GeoLocation(38.20, -92.62),
-        zoomLevel = 10.0f,
-        taxonGroups = setOf("Fish", "Mammals", "Reptiles", "Amphibians"),
-        barrierTypes = setOf(BarrierType.DAM, BarrierType.HIGHWAY, BarrierType.FENCE)
+    STL_CITY(
+        title = "St. Louis City",
+        subtitle = "Forest Park, River Des Peres and the I-64/I-44/I-70 core",
+        center = GeoLocation(38.63, -90.24),
+        zoomLevel = 12f
     ),
-    ST_LOUIS_SPRAWL(
-        title = "St. Louis Metro Encroachment",
-        subtitle = "Urban expansion & Mississippi river flyway corridor",
-        center = GeoLocation(38.62, -90.20),
-        zoomLevel = 10.0f,
-        taxonGroups = setOf("Birds", "Mammals", "Amphibians"),
-        barrierTypes = setOf(BarrierType.HIGHWAY, BarrierType.URBAN_WALL, BarrierType.RAILWAY)
+    STL_COUNTY_WEST(
+        title = "West St. Louis County",
+        subtitle = "Creve Coeur Park, I-270 and the Missouri River bottoms",
+        center = GeoLocation(38.70, -90.50),
+        zoomLevel = 12f
     ),
-    YELLOWSTONE_CORRIDOR(
-        title = "Yellowstone Highway Corridor",
-        subtitle = "Ungulate migrations & highway collisions",
-        center = GeoLocation(44.428, -110.588),
-        zoomLevel = 8.5f,
-        taxonGroups = setOf("Mammals", "Birds"),
-        barrierTypes = setOf(BarrierType.HIGHWAY, BarrierType.FENCE)
+    MERAMEC_I44(
+        title = "Meramec River & I-44",
+        subtitle = "Castlewood State Park, Valley Park and Eureka",
+        center = GeoLocation(38.53, -90.56),
+        zoomLevel = 12f
     ),
-    SNAKE_RIVER_DAMS(
-        title = "Snake River Dams",
-        subtitle = "Aquatic migration barriers & fish passage",
-        center = GeoLocation(45.644, -121.941),
-        zoomLevel = 7.5f,
-        taxonGroups = setOf("Fish", "Amphibians"),
-        barrierTypes = setOf(BarrierType.DAM, BarrierType.CANAL)
+    ST_CHARLES_CITY(
+        title = "St. Charles",
+        subtitle = "I-70, I-370 and the Missouri River crossing",
+        center = GeoLocation(38.79, -90.50),
+        zoomLevel = 12f
     ),
-    CA17_COUGAR(
-        title = "CA-17 Cougar Corridor",
-        subtitle = "Suburban freeway & soundwall isolation",
-        center = GeoLocation(34.134, -118.321),
-        zoomLevel = 9.5f,
-        taxonGroups = setOf("Mammals"),
-        barrierTypes = setOf(BarrierType.HIGHWAY, BarrierType.URBAN_WALL, BarrierType.RAILWAY)
+    BUSCH_WELDON_SPRING(
+        title = "Busch & Weldon Spring CAs",
+        subtitle = "Conservation areas along MO-94 and US-40/I-64 in St. Charles County",
+        center = GeoLocation(38.70, -90.72),
+        zoomLevel = 12f
     ),
-    FLORIDA_PANTHER(
-        title = "Florida Panther Wildlife Crossing",
-        subtitle = "Critical endangered feline habitat fragmentation",
-        center = GeoLocation(26.168, -81.352),
-        zoomLevel = 9.0f,
-        taxonGroups = setOf("Mammals", "Reptiles"),
-        barrierTypes = setOf(BarrierType.HIGHWAY, BarrierType.FENCE)
-    ),
-    ILLINOIS_SNAKE_ROAD(
-        title = "Illinois Snake Road",
-        subtitle = "Shawnee NF LaRue-Pine Hills seasonal migration",
-        center = GeoLocation(37.56, -89.44),
-        zoomLevel = 11.0f,
-        taxonGroups = setOf("Reptiles", "Amphibians"),
-        barrierTypes = setOf(BarrierType.HIGHWAY, BarrierType.FENCE)
-    ),
-    ILLINOIS_MISSISSIPPI_CORRIDOR(
-        title = "Metro East Illinois",
-        subtitle = "Illinois Metro East & I-55 deer corridor",
-        center = GeoLocation(38.65, -89.98),
-        zoomLevel = 10.0f,
-        taxonGroups = setOf("Birds", "Mammals", "Amphibians"),
-        barrierTypes = setOf(BarrierType.HIGHWAY, BarrierType.DAM, BarrierType.RAILWAY)
-    ),
-    WASHINGTON_BALLARD_LOCKS(
-        title = "Seattle Ballard Locks",
-        subtitle = "Ballard Locks & salmon ladder passage",
-        center = GeoLocation(47.67, -122.40),
-        zoomLevel = 12.0f,
-        taxonGroups = setOf("Fish", "Mammals", "Birds"),
-        barrierTypes = setOf(BarrierType.DAM, BarrierType.CANAL, BarrierType.URBAN_WALL)
-    ),
-    WASHINGTON_COLUMBIA_SALMON(
-        title = "Columbia River Salmon",
-        subtitle = "Columbia River dams & salmon passage",
-        center = GeoLocation(45.64, -121.94),
-        zoomLevel = 9.0f,
-        taxonGroups = setOf("Fish", "Mammals", "Birds"),
-        barrierTypes = setOf(BarrierType.DAM, BarrierType.HIGHWAY)
+    CONFLUENCE(
+        title = "Missouri–Mississippi Confluence",
+        subtitle = "Floodplain between the rivers, US-67 and Route 367",
+        center = GeoLocation(38.84, -90.17),
+        zoomLevel = 12f
     )
 }

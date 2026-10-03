@@ -1,6 +1,6 @@
 package com.example.dont_cross_the_streams
 
-import com.example.dont_cross_the_streams.data.datasource.MockDatasetTransparencyDataSource
+import com.example.dont_cross_the_streams.data.datasource.DataSourceCatalog
 import com.example.dont_cross_the_streams.ui.main.MainTab
 import com.example.dont_cross_the_streams.ui.main.MainViewModel
 import com.example.dont_cross_the_streams.ui.map.resolveDataSourceUrl
@@ -14,47 +14,34 @@ import kotlin.test.assertTrue
 class FeatureDetailDataSourceResolverTest {
 
     @Test
-    fun resolveDataSourceUrl_mapsKnownSourcesToUrls() {
-        assertEquals("https://techdocs.gbif.org/en/openapi/", resolveDataSourceUrl("GBIF"))
-        assertEquals("https://api.inaturalist.org/v1/docs/", resolveDataSourceUrl("iNaturalist"))
-        assertEquals("https://github.com/movebank/movebank-api-doc", resolveDataSourceUrl("Movebank GPS Tracking"))
-        assertEquals("https://documenter.getpostman.com/view/664302/S1ENwy59", resolveDataSourceUrl("eBird"))
+    fun resolveDataSourceUrl_mapsEachSourceToItsDocs() {
+        assertEquals("https://api.inaturalist.org/v1/docs/", resolveDataSourceUrl("iNaturalist (Dead-animal annotations)"))
+        assertEquals("https://techdocs.gbif.org/en/openapi/", resolveDataSourceUrl("GBIF / MDC Survey"))
         assertEquals("https://wiki.openstreetmap.org/wiki/Overpass_API", resolveDataSourceUrl("OpenStreetMap Overpass"))
-        assertEquals("https://nid.sec.usace.army.mil/api/developer/static/index.html", resolveDataSourceUrl("USACE NID"))
-        assertEquals("https://www.census.gov/data/developers/guidance/api-user-guide.html", resolveDataSourceUrl("US Census Bureau 2020"))
-        assertEquals("https://crashviewer.nhtsa.dot.gov/CrashAPI", resolveDataSourceUrl("NHTSA FARS"))
-        assertEquals("https://explorer.natureserve.org/api-docs/", resolveDataSourceUrl("NatureServe"))
-        assertEquals("https://ecos.fws.gov/ecp/services", resolveDataSourceUrl("USFWS IPaC"))
-        assertEquals("https://highways.dot.gov/federal-lands/programs/wildlife-crossings", resolveDataSourceUrl("USDOT FHWA Wildlife Crossings Pilot Program (WCPP)"))
-        assertEquals("https://gisdata-caltrans.opendata.arcgis.com/", resolveDataSourceUrl("Caltrans Wildlife Crossing & Mitigation GIS API"))
-        assertEquals("https://data-cdot.opendata.arcgis.com/", resolveDataSourceUrl("CDOT Wildlife Mitigations & Overpasses API"))
-        assertEquals("https://gisdata-wsdot.opendata.arcgis.com/", resolveDataSourceUrl("WSDOT Fish Passage Barrier & Wildlife Crossing API"))
-        assertEquals("https://geodataservices.wdfw.wa.gov/arcgis/rest/services", resolveDataSourceUrl("WDFW Salmon Passage API"))
+        assertEquals("https://www.fhwa.dot.gov/bridge/nbi.cfm", resolveDataSourceUrl("FHWA National Bridge Inventory (BTS NTAD)"))
+        assertEquals(
+            "https://tigerweb.geo.census.gov/arcgis/rest/services/Census2020/Tracts_Blocks/MapServer",
+            resolveDataSourceUrl("US Census Bureau 2020 (TIGERweb)")
+        )
     }
 
     @Test
-    fun resolveDataSourceUrl_fallsBackToProviderHomepageWhenNoApiPageExists() {
-        assertEquals("https://www.modot.org/", resolveDataSourceUrl("MoDOT Safety GIS"))
-        assertEquals("https://mdc.mo.gov/", resolveDataSourceUrl("MDC Wildlife Census"))
-        assertEquals("https://wildlife.faa.gov/home", resolveDataSourceUrl("FAA NWSD"))
-        assertEquals("https://www.nwd.usace.army.mil/", resolveDataSourceUrl("USACE NWD"))
-        assertEquals("https://idot.illinois.gov/", resolveDataSourceUrl("IDOT Safety Data"))
-        assertEquals("https://www.codot.gov/", resolveDataSourceUrl("Colorado DOT WVC"))
-        assertEquals("https://www.ncdot.gov/", resolveDataSourceUrl("North Carolina DOT"))
-        assertEquals("https://www.nps.gov/", resolveDataSourceUrl("National Park Service"))
-        assertEquals("https://www.fisheries.noaa.gov/", resolveDataSourceUrl("NOAA Fisheries"))
+    fun resolveDataSourceUrl_returnsOriginalUrlIfHttpOrHttps() {
+        val directUrl = "https://custom-data-portal.gov/api"
+        assertEquals(directUrl, resolveDataSourceUrl(directUrl))
     }
 
     @Test
     fun resolveDataSourceUrl_hubSourcesUseTheHubsCuratedLink() {
-        MockDatasetTransparencyDataSource.dataSources.forEach { info ->
+        DataSourceCatalog.dataSources.forEach { info ->
             assertEquals(info.documentationUrl, resolveDataSourceUrl(info.name), "Link mismatch for ${info.id}")
+            assertEquals(info.id, resolveTransparencyHubDataSourceId(info.name))
         }
     }
 
     @Test
-    fun dataSources_neverLinkToRawApiRoots() {
-        MockDatasetTransparencyDataSource.dataSources.forEach { info ->
+    fun dataSources_areHttpsAndNeverStagingOrRawJson() {
+        DataSourceCatalog.dataSources.forEach { info ->
             assertTrue(info.homepageUrl.startsWith("https://"), "Bad homepage for ${info.id}")
             assertTrue(info.documentationUrl.startsWith("https://"), "Bad docs link for ${info.id}")
             assertFalse(info.documentationUrl.contains("qa-"), "QA/staging link for ${info.id}")
@@ -71,30 +58,8 @@ class FeatureDetailDataSourceResolverTest {
     }
 
     @Test
-    fun resolveDataSourceUrl_returnsOriginalUrlIfHttpOrHttps() {
-        val directUrl = "https://custom-data-portal.gov/api"
-        assertEquals(directUrl, resolveDataSourceUrl(directUrl))
-    }
-
-    @Test
-    fun resolveTransparencyHubDataSourceId_mapsToValidHubIds() {
-        assertEquals("gbif", resolveTransparencyHubDataSourceId("GBIF Sighting"))
-        assertEquals("inaturalist", resolveTransparencyHubDataSourceId("iNaturalist Observations"))
-        assertEquals("movebank", resolveTransparencyHubDataSourceId("Movebank"))
-        assertEquals("ebird", resolveTransparencyHubDataSourceId("eBird"))
-        assertEquals("osm_overpass", resolveTransparencyHubDataSourceId("OpenStreetMap Overpass"))
-        assertEquals("usace_dams", resolveTransparencyHubDataSourceId("USACE National Inventory of Dams"))
-        assertEquals("us_census", resolveTransparencyHubDataSourceId("US Census Bureau 2020"))
-        assertEquals("modot_wvc", resolveTransparencyHubDataSourceId("MoDOT WVC Database"))
-        assertEquals("mdc_wildlife", resolveTransparencyHubDataSourceId("MDC Wildlife Inventory"))
-        assertEquals("idnr_wildlife", resolveTransparencyHubDataSourceId("Illinois DNR Herpetological Survey"))
-        assertEquals("wdfw_salmon", resolveTransparencyHubDataSourceId("WDFW Salmon Passage"))
-        assertEquals("faa_nwsd", resolveTransparencyHubDataSourceId("FAA NWSD"))
-        assertEquals("nhtsa_fars", resolveTransparencyHubDataSourceId("NHTSA FARS"))
-        assertEquals("usdot_wcpp", resolveTransparencyHubDataSourceId("USDOT WCPP"))
-        assertEquals("caltrans_crossings", resolveTransparencyHubDataSourceId("Caltrans Wildlife Crossing"))
-        assertEquals("cdot_crossings", resolveTransparencyHubDataSourceId("CDOT Overpasses"))
-        assertEquals("wsdot_fish_wildlife", resolveTransparencyHubDataSourceId("WSDOT Fish Passage Barrier"))
+    fun resolveTransparencyHubDataSourceId_unknownIsNull() {
+        assertEquals(null, resolveTransparencyHubDataSourceId("Some Local Survey"))
     }
 
     @Test

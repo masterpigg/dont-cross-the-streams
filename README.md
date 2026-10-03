@@ -19,55 +19,33 @@ Human civilization relies heavily on closed-loop infrastructure networks—highw
 
 ## ✨ Key Features
 
-### 🗺️ Multi-Layer Conflict Map Engine
-An interactive, high-performance geospatial viewer powered by Esri / OpenStreetMap raster tile engines:
-- **Wildlife Occurrences Layer**: Real-time species sightings categorized by ecological sensitivity and conservation status.
-- **Collision & Roadkill Hotspots**: Pulsing halo overlays highlighting high-frequency incident corridors.
-- **Collision Reports**: Individual dead-animal reports at their exact location (live from iNaturalist's "Alive or Dead: Dead" annotation for the area on screen), shown as small red dots.
-- **Wildlife Crossings**: Overpasses, underpasses and culverts as green bridge markers, so you can compare where animals are helped across with where they are being hit. Selecting a hotspot, crossing or report shows the nearest crossing and nearby collisions.
-- **Linear Infrastructure Barriers**: Color-coded networks of interstates, passenger/freight railways, dams, and urban boundaries.
-- **Population Density Heatmaps**: Human development footprint indices integrated directly into ecological overlays.
+The app is focused on the **St. Louis region: St. Louis City, St. Louis County and St. Charles County**. Every data point comes live from a public API for the area on screen; there is no hand-entered or sample data. When a source can't be reached, its layer says "unavailable" rather than showing stand-ins.
 
-### 📍 Regional Quick Presets
-One-tap instant camera jump presets configured for famous national and regional ecological bottleneck zones:
-1. **Missouri I-70**: Whitetail deer & turtle corridor crossings across central Missouri.
-2. **Ozarks & Bagnell Dam**: Lake of the Ozarks aquatic, reptile, and dam spillway barriers.
-3. **St. Louis Metro Area**: Urban sprawl fragmentation and amphibian wetland migrations.
-4. **Shawnee National Forest (Snake Road)**: Bi-annual seasonal road closures for snake and amphibian migration.
-5. **Seattle Ballard Locks**: Salmon passage and marine mammal lock navigation conflicts.
-6. **Columbia River Hydroelectric Dams**: Critical Pacific salmon migratory fish ladder corridors.
-7. **Yellowstone Migration Corridor**: Elk, pronghorn, and grizzly bear highway crossing hotspots.
-8. **CA-17 Santa Cruz Mountains**: Highway 17 mountain lion habitat connectivity barriers.
-9. **Florida Panther Corridor**: US-41 (Alligator Alley) vehicle collision hotspots and underpass networks.
+### 🗺️ Live Conflict Map
+- **Wildlife**: research-grade vertebrate sightings from **iNaturalist** plus occurrence records from **GBIF**.
+- **Collision Reports**: individual dead-animal reports at their exact location (iNaturalist "Alive or Dead: Dead" annotation), shown as small red dots.
+- **Hotspots**: computed in the app by clustering those reports (3+ reports, each within 750 m of another) and labelled with the nearest major road. They are recomputed when you move the map or change the month filter.
+- **Crossings & Culverts**: dedicated wildlife crossings mapped in **OpenStreetMap**, plus existing bridges and large culverts over waterways from the **FHWA National Bridge Inventory** (with daily traffic counts) and stream culverts under major roads from OpenStreetMap. These are the routes animals can already use to get under roads.
+- **Barriers**: motorways, trunk and primary roads, mainline railways, dams/weirs and canals from **OpenStreetMap**.
+- **Population**: 2020 Census tracts from the **Census Bureau's TIGERweb**, shaded by people per km² of land.
+- **Month filter**: limit sightings, reports and hotspots to particular months (e.g. the October–November deer rut).
+- Each layer loads once you're zoomed in far enough for the APIs to answer quickly; the layer chips show counts or "zoom in".
 
-### 📊 Conflict Risk Scorecard & Matrix
-A dynamic composite risk algorithm evaluating site-specific ecological threat levels:
-- **Composite Risk Score (0–100)**: Instant numerical evaluation based on traffic volume, species vulnerability, barrier density, and historical incident records.
-- **Sub-Factor Breakdown Bars**: Visual rating indicators for individual risk vectors.
-- **Closed-Loop Mitigation Matrix**: Actionable engineering recommendations including:
-  - 🌉 **Wildlife Overpasses & Eco-Bridges**: Vegetated green bridges for large mammals.
-  - 🦔 **Eco-Culverts & Amphibian Tunnels**: Directional fencing and low-light underpasses.
-  - 🐟 **Fish Ladders & Salmon Cannons**: Hydrodynamic fishways for dam bypass.
-  - 🚗 **Dynamic Speed Corridors**: Seasonal variable speed limit signs and thermal detection warnings.
+### 📍 Region Presets
+St. Louis Region · St. Louis City · West St. Louis County · Meramec River & I-44 · St. Charles · Busch & Weldon Spring Conservation Areas · Missouri–Mississippi Confluence. Presets only move the map.
 
-### 🌐 Open Data Transparency Hub
-A searchable, fully attributed directory of **14+ open geospatial and ecological APIs**:
-- **GBIF** (Global Biodiversity Information Facility)
-- **Movebank** (Animal Tracking Data)
-- **eBird** (Cornell Lab of Ornithology)
-- **iNaturalist** (Community Wildlife Observations)
-- **USFWS IPaC** (Information for Planning and Consultation)
-- **USGS GAP** (Gap Analysis Project)
-- **NatureServe Explorer** (Species Conservation Status)
-- **FAA NWSD** (National Wildlife Strike Database)
-- **State DOTs** (MoDOT, IDNR, WDFW Roadkill Databases)
-- **NHTSA FARS** (Fatality Analysis Reporting System)
-- **US Census Bureau** (TIGER/Line & Demographic Footprints)
-- **NASA Human Footprint** (Global Human Footprint Index)
-- **USACE NID** (National Inventory of Dams)
-- **OpenStreetMap Overpass API** (Infrastructure Highway & Rail Networks)
+### 📊 Study Areas
+Side-by-side, live counts for St. Louis City, St. Louis County and St. Charles County: dead-animal reports, sightings, GBIF records, bridges/culverts over water, mapped wildlife crossings, major-road length, 2020 population, land area and density, plus reports and waterway structures per 100 km of major road. Every number names its source.
 
-*Every map marker and data card contains clickable web links directly to the underlying raw source records.*
+### 🌐 Data Sources
+The five APIs the app queries, with the exact request shapes it sends:
+- **iNaturalist API**: sightings and dead-animal reports
+- **GBIF Occurrence API**: additional occurrence records
+- **OpenStreetMap Overpass API**: barriers, wildlife crossings, culverts, road length
+- **FHWA National Bridge Inventory** (BTS NTAD ArcGIS service): bridges and culverts over waterways
+- **US Census Bureau TIGERweb**: 2020 tract boundaries, population and land area
+
+*Selecting a sighting, report, crossing or barrier links straight to the original record (iNaturalist observation, GBIF occurrence or OpenStreetMap feature).*
 
 ---
 
@@ -90,7 +68,7 @@ graph TD
     A[UI Layer: Jetpack Compose / Compose Multiplatform] --> B[Navigation 3 & Material 3 Adaptive]
     B --> C[ViewModel Layer: MVVM + StateFlow + Coroutines]
     C --> D[Repository & Data Layer]
-    D --> E[Geospatial Tile Engine & 14+ Open APIs]
+    D --> E[Live APIs: iNaturalist · GBIF · OSM Overpass · NBI · Census TIGERweb]
 ```
 
 - **Language**: Kotlin 2.1.0

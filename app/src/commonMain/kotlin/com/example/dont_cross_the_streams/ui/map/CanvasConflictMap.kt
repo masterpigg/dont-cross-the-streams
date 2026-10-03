@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -86,6 +87,9 @@ import com.example.dont_cross_the_streams.domain.model.BarrierType
 import com.example.dont_cross_the_streams.domain.model.CollisionHotspot
 import com.example.dont_cross_the_streams.domain.model.CollisionReport
 import com.example.dont_cross_the_streams.domain.model.CollisionSeverity
+import com.example.dont_cross_the_streams.domain.model.CrossingKind
+import com.example.dont_cross_the_streams.domain.model.CrossingStructureType
+import com.example.dont_cross_the_streams.domain.model.ImpactLevel
 import com.example.dont_cross_the_streams.domain.model.GeoLocation
 import com.example.dont_cross_the_streams.domain.model.PopulationDensityZone
 import com.example.dont_cross_the_streams.domain.model.WildlifeCrossing
@@ -449,17 +453,22 @@ fun CanvasConflictMap(
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val cam = camera
                 drawWildlife(cam, wildlifeOccurrences, textMeasurer)
-                drawHotspots(cam, collisionHotspots, textMeasurer)
                 for (crossing in wildlifeCrossings) {
                     val pos = project(crossing.location, cam, size)
                     if (!pos.isNear(size, 30f)) continue
-                    drawWildlifeCrossingMarker(pos, selected = selectedFeature?.id == crossing.id)
+                    if (crossing.kind == CrossingKind.DEDICATED) {
+                        drawWildlifeCrossingMarker(pos, selected = selectedFeature?.id == crossing.id)
+                    } else {
+                        drawWaterwayStructureMarker(pos, culvert = crossing.structureType == CrossingStructureType.CULVERT, selected = selectedFeature?.id == crossing.id)
+                    }
                 }
                 for (report in collisionReports) {
                     val pos = project(report.location, cam, size)
                     if (!pos.isNear(size, 10f)) continue
                     drawCollisionReportMarker(pos, selected = selectedFeature?.id == report.id)
                 }
+                // Hotspot pins last so the clusters they summarise never cover them.
+                drawHotspots(cam, collisionHotspots, textMeasurer)
 
                 selectedFeature?.let { selection ->
                     drawCircle(
@@ -485,7 +494,8 @@ fun CanvasConflictMap(
 
         CollisionCrossingLegend(
             showCollisionReports = collisionReports.isNotEmpty(),
-            showCrossings = wildlifeCrossings.isNotEmpty(),
+            showCrossings = wildlifeCrossings.any { it.kind == CrossingKind.DEDICATED },
+            showWaterwayStructures = wildlifeCrossings.any { it.kind == CrossingKind.WATERWAY_STRUCTURE },
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(start = 12.dp, bottom = 96.dp)
@@ -715,76 +725,59 @@ private fun DrawScope.drawGraticule(camera: MapCamera) {
 }
 
 private fun DrawScope.drawPopulationZones(camera: MapCamera, zones: List<PopulationDensityZone>, textMeasurer: TextMeasurer) {
-    val minRadius = 6.dp.toPx()
     for (zone in zones) {
-        // Size the heat blob from the zone's real extent so it scales with the map, not the screen.
         val box = zone.boundingBox
         val nw = project(GeoLocation(box.maxLat, box.minLon), camera, size)
         val se = project(GeoLocation(box.minLat, box.maxLon), camera, size)
-        val center = project(zone.centerLocation, camera, size)
-        val radius = maxOf(abs(se.x - nw.x), abs(se.y - nw.y), 2 * minRadius) / 2f
-        if (!center.isNear(size, radius)) continue
-
-        val heatColor = when {
-            zone.densityScore > 1000 -> Color(0x66FF3D00)
-            zone.densityScore > 500 -> Color(0x55FF9100)
-            zone.densityScore > 200 -> Color(0x44FFEA00)
-            else -> Color(0x3300E676)
+        if (se.x < 0f || nw.x > size.width || se.y < 0f || nw.y > size.height) continue
+        val fill = populationColor(zone.densityScore)
+        // Census tract boundary (outer ring plus any holes), filled by people per km² of land.
+        val path = Path().apply { fillType = PathFillType.EvenOdd }
+        for (ring in zone.polygon) {
+            ring.forEachIndexed { index, point ->
+                val p = project(point, camera, size)
+                if (index == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y)
+            }
+            path.close()
         }
-        drawCircle(color = heatColor, radius = radius, center = center)
-        drawCircle(color = heatColor.copy(alpha = 0.8f), radius = radius, center = center, style = Stroke(width = 1.5f))
-
-        if (radius > 40.dp.toPx()) {
-            val label = textMeasurer.measure(
-                text = "${zone.regionName} (${zone.densityScore.toInt()}/km²)",
-                style = TextStyle(color = Color(0xDDFFFFFF), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            )
-            drawText(textLayoutResult = label, topLeft = Offset(center.x - label.size.width / 2f, center.y - label.size.height / 2f))
-        }
+        drawPath(path = path, color = fill)
+        drawPath(path = path, color = fill.copy(alpha = 0.55f), style = Stroke(width = 1f))
     }
 }
 
-private fun DrawScope.drawBarriers(camera: MapCamera, barriers: List<BarrierFeature>, textMeasurer: TextMeasurer) {
-    val showLabels = camera.zoom >= 6.5f
+/** Sequential purple scale for population density (people per km² of land). */
+fun populationColor(peoplePerKm2: Double): Color = when {
+    peoplePerKm2 >= 3000 -> Color(0x666A1B9A)
+    peoplePerKm2 >= 1500 -> Color(0x528E24AA)
+    peoplePerKm2 >= 500 -> Color(0x4DAB47BC)
+    peoplePerKm2 >= 100 -> Color(0x33CE93D8)
+    else -> Color(0x1FE1BEE7)
+}
+
+private fun DrawScope.drawBarriers(camera: MapCamera, barriers: List<BarrierFeature>, @Suppress("UNUSED_PARAMETER") textMeasurer: TextMeasurer) {
     for (barrier in barriers) {
         val barrierColor = getBarrierColor(barrier.type)
-        val centerPt = project(barrier.location, camera, size)
-        val path = Path()
+        val strokeStyle = when (barrier.type) {
+            BarrierType.RAILWAY -> Stroke(width = 3f, cap = StrokeCap.Round, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 6f)))
+            BarrierType.HIGHWAY -> Stroke(width = if (barrier.impactLevel == ImpactLevel.SEVERE) 5f else 3.5f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            else -> Stroke(width = 5f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        }
         if (barrier.geometryPath.size >= 2) {
+            val path = Path()
+            var anyVisible = false
             barrier.geometryPath.forEachIndexed { index, geoPoint ->
                 val pt = project(geoPoint, camera, size)
+                if (!anyVisible && pt.isNear(size, 50f)) anyVisible = true
                 if (index == 0) path.moveTo(pt.x, pt.y) else path.lineTo(pt.x, pt.y)
             }
+            if (anyVisible) drawPath(path = path, color = barrierColor, style = strokeStyle)
         } else {
-            if (!centerPt.isNear(size, 80f)) continue
-            path.moveTo(centerPt.x - 24.dp.toPx(), centerPt.y - 8.dp.toPx())
-            path.lineTo(centerPt.x + 24.dp.toPx(), centerPt.y + 8.dp.toPx())
+            // Point features (e.g. a dam mapped as a single node).
+            val pt = project(barrier.location, camera, size)
+            if (!pt.isNear(size, 20f)) continue
+            drawCircle(color = barrierColor, radius = 6.dp.toPx(), center = pt)
+            drawCircle(color = Color.White, radius = 6.dp.toPx(), center = pt, style = Stroke(width = 2f))
         }
-
-        val strokeStyle = if (barrier.type == BarrierType.FENCE) {
-            Stroke(width = 4f, cap = StrokeCap.Round, pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f)))
-        } else {
-            Stroke(width = 6f, cap = StrokeCap.Round, join = StrokeJoin.Round)
-        }
-        drawPath(path = path, color = barrierColor, style = strokeStyle)
-
-        if (!showLabels || !centerPt.isNear(size, 100f)) continue
-        val textResult = textMeasurer.measure(
-            text = barrier.name,
-            style = TextStyle(color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        )
-        val badgeWidth = textResult.size.width + 12f
-        val badgeHeight = textResult.size.height + 6f
-        val badgeTopLeft = Offset(centerPt.x - badgeWidth / 2f, centerPt.y - badgeHeight / 2f)
-        drawRoundRect(color = Color(0xEE1E2836), topLeft = badgeTopLeft, size = Size(badgeWidth, badgeHeight), cornerRadius = CornerRadius(4f))
-        drawRoundRect(
-            color = barrierColor,
-            topLeft = badgeTopLeft,
-            size = Size(badgeWidth, badgeHeight),
-            cornerRadius = CornerRadius(4f),
-            style = Stroke(width = 1f)
-        )
-        drawText(textLayoutResult = textResult, topLeft = Offset(centerPt.x - textResult.size.width / 2f, centerPt.y - textResult.size.height / 2f))
     }
 }
 

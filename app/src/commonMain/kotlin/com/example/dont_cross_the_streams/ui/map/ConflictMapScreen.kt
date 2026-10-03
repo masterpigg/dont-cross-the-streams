@@ -51,6 +51,8 @@ fun ConflictMapScreen(
         onTogglePopulation = viewModel::togglePopulationDensityOverlay,
         onToggleCrossings = viewModel::toggleCrossingsOverlay,
         onToggleCollisionReports = viewModel::toggleCollisionReportsOverlay,
+        onToggleMonth = viewModel::toggleMonth,
+        onClearMonths = viewModel::clearMonths,
         onToggleTaxonGroup = viewModel::toggleTaxonGroup,
         onToggleBarrierType = viewModel::toggleBarrierType,
         onSelectPreset = viewModel::applyPreset,
@@ -79,6 +81,8 @@ fun ConflictMapScreenContent(
     onTogglePopulation: () -> Unit = {},
     onToggleCrossings: () -> Unit = {},
     onToggleCollisionReports: () -> Unit = {},
+    onToggleMonth: (Int) -> Unit = {},
+    onClearMonths: () -> Unit = {},
     onToggleTaxonGroup: (String) -> Unit = {},
     onToggleBarrierType: (BarrierType) -> Unit = {},
     onSelectPreset: (ConflictRegionPreset) -> Unit = {},
@@ -93,7 +97,10 @@ fun ConflictMapScreenContent(
     onMapCenterAndZoomChanged: (GeoLocation, Float) -> Unit = { _, _ -> },
     onNavigateToTransparencyHub: ((String?) -> Unit)? = null
 ) {
-    val activeFilterCount = (5 - uiState.selectedTaxonGroups.size) + (BarrierType.entries.size - uiState.selectedBarrierTypes.size)
+    val defaults = remember { MapUiState() }
+    val activeFilterCount = (defaults.selectedTaxonGroups - uiState.selectedTaxonGroups).size +
+        (BarrierType.entries.size - uiState.selectedBarrierTypes.size) +
+        (if (uiState.selectedMonths.isEmpty()) 0 else 1)
 
     Scaffold(
         topBar = {
@@ -115,7 +122,7 @@ fun ConflictMapScreenContent(
                             )
                         }
                         Text(
-                            text = uiState.activePreset?.title ?: "Multi-Layer Ecological Barriers & Hotspots",
+                            text = uiState.activePreset?.title ?: "Live data: iNaturalist · GBIF · OpenStreetMap · NBI · Census",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -164,23 +171,6 @@ fun ConflictMapScreenContent(
                 modifier = Modifier.fillMaxSize()
             )
 
-            if (uiState.isLoading) {
-                Surface(
-                    modifier = Modifier.align(Alignment.Center),
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.9f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text("Loading Spatial Datasets...")
-                    }
-                }
-            }
-
             LayerToggleBar(
                 showWildlife = uiState.showWildlifeOccurrences,
                 showHotspots = uiState.showCollisionHotspots,
@@ -188,8 +178,8 @@ fun ConflictMapScreenContent(
                 showPopulation = uiState.showPopulationDensity,
                 showCrossings = uiState.showWildlifeCrossings,
                 showCollisionReports = uiState.showCollisionReports,
-                collisionReportCount = uiState.collisionReports.size,
-                collisionReportStatus = uiState.collisionReportStatus,
+                layerSummary = { layer -> layerSummary(uiState, layer) },
+                hotspotCount = uiState.filteredCollisionHotspots.size,
                 onToggleWildlife = onToggleWildlife,
                 onToggleHotspots = onToggleHotspots,
                 onToggleBarriers = onToggleBarriers,
@@ -208,6 +198,9 @@ fun ConflictMapScreenContent(
                 selectedTaxonGroups = uiState.selectedTaxonGroups,
                 selectedBarrierTypes = uiState.selectedBarrierTypes,
                 activePreset = uiState.activePreset,
+                selectedMonths = uiState.selectedMonths,
+                onToggleMonth = onToggleMonth,
+                onClearMonths = onClearMonths,
                 onToggleTaxonGroup = onToggleTaxonGroup,
                 onToggleBarrierType = onToggleBarrierType,
                 onSelectPreset = onSelectPreset,
@@ -223,8 +216,26 @@ fun ConflictMapScreenContent(
                 onNavigateToTransparencyHub = onNavigateToTransparencyHub,
                 crossings = uiState.allWildlifeCrossings,
                 hotspots = uiState.allCollisionHotspots,
-                collisionReports = uiState.collisionReports
+                collisionReports = uiState.filteredCollisionReportsAll
             )
         }
     }
 }
+
+/** Chip text for a layer: its live count, or why there is nothing to show yet. */
+internal fun layerSummary(state: MapUiState, layer: MapLayer): String {
+    val count = when (layer) {
+        MapLayer.WILDLIFE -> state.filteredWildlifeOccurrences.size
+        MapLayer.COLLISIONS -> state.filteredCollisionReportsAll.size
+        MapLayer.INFRASTRUCTURE -> state.allBarriers.size
+        MapLayer.STRUCTURES -> state.allWildlifeCrossings.size
+        MapLayer.POPULATION -> state.allPopulationZones.size
+    }
+    return when (state.statusOf(layer)) {
+        LayerLoadState.LOADING -> "loading…"
+        LayerLoadState.ZOOM_IN -> if (count > 0) "$count · zoom in to update" else "zoom in"
+        LayerLoadState.UNAVAILABLE -> if (count > 0) "$count · offline" else "unavailable"
+        LayerLoadState.IDLE, LayerLoadState.LOADED -> "$count"
+    }
+}
+
