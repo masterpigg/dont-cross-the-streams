@@ -117,9 +117,14 @@ The compiled Web Wasm assets will be generated at:
 
 The project includes an automated GitHub Actions pipeline configured in `.github/workflows/deploy-and-build.yml`:
 
-- 🤖 **Android Build**: Compiles and verifies the debug APK artifact on every push and pull request.
-- 🌐 **GitHub Pages Deployment**: Automatically builds the Kotlin/WasmJS web distribution and publishes it live to [GitHub Pages](https://masterpigg.github.io/dont-cross-the-streams/).
-- 🍎 **iOS Verification**: Compiles the experimental Compose Multiplatform iOS framework targets (`iosArm64`, `iosSimulatorArm64`).
+Every pull request and every push to `main` runs:
+
+- 🧪 **Unit Tests**: Runs the shared `commonTest` suite on the Android JVM (`:app:testDebugUnitTest`).
+- 🤖 **Android Build**: Compiles the debug APK and uploads it as a build artifact.
+- 🌐 **Web Build**: Compiles the Kotlin/WasmJS web distribution.
+- 🍎 **iOS Compile**: Compiles the experimental Compose Multiplatform iOS targets (`iosArm64`, `iosSimulatorArm64`) on a macOS runner.
+
+On `main` only, once the unit tests and web build pass, the web distribution is published live to [GitHub Pages](https://masterpigg.github.io/dont-cross-the-streams/).
 
 ---
 
