@@ -27,9 +27,9 @@ import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Dataset
 import androidx.compose.material.icons.rounded.Key
-import androidx.compose.material.icons.rounded.Launch
+import androidx.compose.material.icons.automirrored.rounded.Launch
 import androidx.compose.material.icons.rounded.LockOpen
-import androidx.compose.material.icons.rounded.OpenInNew
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material3.Button
@@ -510,7 +510,7 @@ private fun DataSourceDetailPane(
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.OpenInNew,
+                                imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -525,7 +525,7 @@ private fun DataSourceDetailPane(
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.Launch,
+                                    imageVector = Icons.AutoMirrored.Rounded.Launch,
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp)
                                 )
